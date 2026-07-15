@@ -377,7 +377,7 @@ const FingerboardDisplay: React.FC<FingerboardDisplayProps> = ({
                                     const e = (i + 1) * segmentDeg;
                                     stops.push(chordIndices.includes(i) ? `${CHORD_COLORS[i % CHORD_COLORS.length]} ${s}deg ${e}deg` : `transparent ${s}deg ${e}deg`);
                                 }
-                                wrapperStyle = { background: `conic-gradient(${stops.join(', ')})` };
+                                wrapperStyle = { background: `conic-gradient(from 315deg, ${stops.join(', ')})` };
                             }
 
                             return (

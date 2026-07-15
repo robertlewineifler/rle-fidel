@@ -458,7 +458,7 @@ const ChordManager: React.FC<ChordManagerProps> = ({
                 onDragOver={(e) => onDragOverItem(e, idx)}
                 onDragEnd={onDragEnd}
                 onDrop={(e) => onDrop(e, idx)}
-                className={`flex flex-col bg-slate-800 rounded-xl border-l-4 border-r border-t border-b overflow-hidden shadow-md transition-all duration-200 ${isDragged ? 'opacity-30 scale-95' : 'opacity-100 scale-100'} ${gapAbove ? 'mt-3' : ''} ${gapBelow ? 'mb-3' : ''}`}
+                className={`flex flex-col bg-slate-800 rounded-xl border-l-[6px] border-r border-t border-b overflow-hidden shadow-md transition-all duration-200 ${isDragged ? 'opacity-30 scale-95' : 'opacity-100 scale-100'} ${gapAbove ? 'mt-3' : ''} ${gapBelow ? 'mb-3' : ''}`}
                 style={{ borderLeftColor: CHORD_COLORS[idx % CHORD_COLORS.length], borderTopColor: '#334155', borderRightColor: '#334155', borderBottomColor: '#334155' }}
               >
                 <div className="flex items-center justify-between px-3 py-2 bg-slate-800/50">
