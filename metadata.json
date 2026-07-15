@@ -1,0 +1,8 @@
+{
+  "name": "RLE Fidel",
+  "description": "Ein professionelles Stimmgerät für Violine mit integrierter Pegelanzeige.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": []
+}
