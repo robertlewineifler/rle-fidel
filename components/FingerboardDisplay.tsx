@@ -305,18 +305,18 @@ const FingerboardDisplay: React.FC<FingerboardDisplayProps> = ({
             <div 
                 ref={fingerboardWrapperRef}
                 className="relative bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-2xl select-none transition-all duration-500 w-full"
-                style={{ height: `${FINGERBOARD_HEIGHT}px`, zoom: fbScale }}
+                style={{ height: `${FINGERBOARD_HEIGHT * fbScale}px` }}
             >
                 <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-[#1a1510] to-[#0f0b08] opacity-90"></div>
                 
                 {/* Guide Lines */}
                 <div className="absolute inset-0 top-2 pointer-events-none">
-                    <div className="absolute w-full border-t border-slate-400/30 z-0" style={{ top: `${16 + STRING_PADDING_TOP}px` }} />
+                    <div className="absolute w-full border-t border-slate-400/30 z-0" style={{ top: `${(16 + STRING_PADDING_TOP) * fbScale}px` }} />
                     {[2, 4, 6].map((semitone) => (
                     <div 
                         key={`guide-${semitone}`}
                         className="absolute w-full border-t border-slate-400/30 z-0" 
-                        style={{ top: `${semitone * SPACING_PX + 16 + STRING_PADDING_TOP}px` }}
+                        style={{ top: `${(semitone * SPACING_PX + 16 + STRING_PADDING_TOP) * fbScale}px` }}
                     >
                     </div>
                     ))}
@@ -339,7 +339,7 @@ const FingerboardDisplay: React.FC<FingerboardDisplayProps> = ({
                                     absolute w-12 h-0.5 z-50 transition-all duration-75 shadow-[0_0_10px_rgba(255,255,255,0.8)]
                                     bg-red-500 shadow-red-500/50
                                 `}
-                                style={{ top: `${cursor.semitones * SPACING_PX + 16 + STRING_PADDING_TOP}px` }}
+                                style={{ top: `${(cursor.semitones * SPACING_PX + 16 + STRING_PADDING_TOP) * fbScale}px` }}
                             >
                                 <div className="absolute left-1/2 -translate-x-1/2 -top-1.5 w-0.5 h-3.5 bg-white opacity-80"></div>
                             </div>
@@ -353,7 +353,7 @@ const FingerboardDisplay: React.FC<FingerboardDisplayProps> = ({
                             const isRoot = absIndex === NOTE_TO_INDEX[effectiveRootName];
                             const noteName = getNoteNameInContext(absIndex);
 
-                            const topPos = STRING_PADDING_TOP + semitone * SPACING_PX;
+                            const topPos = (STRING_PADDING_TOP + semitone * SPACING_PX) * fbScale;
                             const isNoteActive = cursor && Math.abs(cursor.semitones - semitone) < 0.2;
                             const chordIndices = noteChordIndices.get(absIndex) || [];
                             const hasChordHighlight = showChordOutlines && chordIndices.length > 0 && chords.length > 0;
@@ -384,7 +384,7 @@ const FingerboardDisplay: React.FC<FingerboardDisplayProps> = ({
                             <div
                                 key={semitone}
                                 className="absolute w-full flex items-center justify-center z-10"
-                                style={{ top: `${topPos}px`, height: '32px' }}
+                                style={{ top: `${topPos}px`, height: `${32 * fbScale}px` }}
                             >
                                 <div className="absolute w-full h-[1px] bg-slate-600 z-0"></div>
 
@@ -395,24 +395,24 @@ const FingerboardDisplay: React.FC<FingerboardDisplayProps> = ({
                                     <button
                                         onClick={() => playNote(noteFreq)}
                                         className={`
-                                            w-6 h-6 flex items-center justify-center relative
+                                            w-12 h-12 flex items-center justify-center relative
                                             transition-all duration-100 active:scale-90
                                             ${semitone === 0 
-                                            ? 'border border-dashed border-slate-600 w-7 h-5 rounded-md' 
+                                            ? 'border border-dashed border-slate-600 w-14 h-10 rounded-md' 
                                             : 'shadow-lg hover:scale-110 rounded-full'
                                             }
                                             ${activeStyle}
                                             ${!isNoteActive && isRoot 
                                             ? 'bg-amber-500 text-slate-900 font-bold z-20' 
                                             : !isNoteActive && semitone === 0 
-                                                ? 'bg-slate-800 text-slate-500 text-[9px]' 
+                                                ? 'bg-slate-800 text-slate-500 text-[18px]' 
                                                 : !isNoteActive 
                                                     ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
                                                     : 'bg-slate-700 text-white' 
                                             }
                                         `}
                                     >
-                                        <span className="text-[9px] font-bold z-10 relative">
+                                        <span className="text-[18px] font-bold z-10 relative">
                                             {noteName}
                                         </span>
                                     </button>

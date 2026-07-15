@@ -39,9 +39,7 @@ const FingerboardSidePanel: React.FC<FingerboardSidePanelProps> = ({
       </div>
 
       <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 shadow-xl backdrop-blur-md">
-        <div className="bg-slate-200 rounded-lg p-2 shadow-inner">
           <KeySignature accidentals={effectiveAccidentals} />
-        </div>
         <div className="text-center mt-1">
           {transpose === 0 ? (
             <>
