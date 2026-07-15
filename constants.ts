@@ -104,14 +104,14 @@ export const CHORD_INTERVALS: { [key: string]: number[] } = {
 };
 
 export const CHORD_COLORS = [
-  '#22c55e', // green-500
-  '#06b6d4', // cyan-500
-  '#3b82f6', // blue-500
-  '#8b5cf6', // violet-500
-  '#ec4899', // pink-500
-  '#84cc16', // lime-500
-  '#14b8a6', // teal-500
-  '#6366f1', // indigo-500
+  '#0000FF',
+  '#FFFF00',
+  '#FF00FF',
+  '#008000',
+  '#00FFFF',
+  '#4B0082',
+  '#87CEEB',
+  '#7FFF00',
 ];
 
 export const CHORD_DIATONIC_STEPS: { [key: string]: number[] } = {

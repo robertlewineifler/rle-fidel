@@ -266,8 +266,16 @@ const ChordManager: React.FC<ChordManagerProps> = ({
           chords: Array.isArray(item.chords) ? item.chords : [],
           notes: typeof item.notes === 'string' ? item.notes : '',
         }));
-        onUpdateLists(normalized);
-        onSelectList(normalized[0].id);
+        const currentIsEmpty = activeList.chords.length === 0 && !activeList.notes;
+        if (currentIsEmpty) {
+          const updatedLists = chordLists.map(l =>
+            l.id === activeListId ? { ...normalized[0], id: activeListId } : l
+          );
+          onUpdateLists(updatedLists);
+        } else {
+          onUpdateLists([...chordLists, ...normalized]);
+          onSelectList(normalized[0].id);
+        }
       } catch (error) {
         alert('Fehler beim Importieren der Datei.');
       }
