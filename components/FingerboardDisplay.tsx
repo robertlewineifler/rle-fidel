@@ -268,7 +268,7 @@ const FingerboardDisplay: React.FC<FingerboardDisplayProps> = ({
       const scaleByWidth = availableWidth / 250;
       const realOuterScale = outerScale ?? 0.9;
       const scaleByHeight = window.innerHeight / (FINGERBOARD_HEIGHT * realOuterScale);
-      setFbScale(Math.max(1, Math.min(scaleByWidth, scaleByHeight)));
+      setFbScale(Math.max(1.5, scaleByHeight));
     };
     const observer = new ResizeObserver(() => updateScale());
     observer.observe(el);
@@ -323,7 +323,7 @@ const FingerboardDisplay: React.FC<FingerboardDisplayProps> = ({
                 </div>
 
                 {/* Strings */}
-                <div className="absolute inset-0 top-2 px-3 flex justify-between">
+                <div className="absolute inset-0 top-2 px-8 flex justify-between">
                 {strings.map((str, index) => {
                     const cursor = activeCursors.find(c => c.stringIndex === index);
                     
