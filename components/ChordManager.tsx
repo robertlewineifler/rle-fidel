@@ -1,9 +1,9 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { Layers, Plus, X, GripVertical, Music, ArrowRightCircle, Download, Upload, Edit2, Check, Trash2, List, ArrowRight, StickyNote } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Layers, Plus, X, GripVertical, Music, ArrowRightCircle, Download, Upload, Edit2, Check, Trash2, List, ArrowRight, StickyNote, RotateCcw } from 'lucide-react';
 import { Chord, KeyResult, ChordList } from '../types';
-import { ROOT_NOTES, CHORD_INTERVALS, MAJOR_KEY_SIGNATURES, CHORD_DIATONIC_STEPS, NOTE_TO_INDEX, SCALES, PREFERRED_ROOT_NAMES_MAJOR, CHORD_COLORS } from '../constants';
+import { ROOT_NOTES, CHORD_INTERVALS, MAJOR_KEY_SIGNATURES, CHORD_DIATONIC_STEPS, NOTE_TO_INDEX, SCALES, PREFERRED_ROOT_NAMES_MAJOR, CHORD_COLORS, PREFERRED_ROOT_NAMES_MINOR } from '../constants';
 import ScaleNotation from './ScaleNotation';
-import { KeyDetector } from '../services/keyDetector';
+import FingerboardControls from './FingerboardControls';
 
 interface ChordManagerProps {
   chordLists: ChordList[];
@@ -21,6 +21,22 @@ interface ChordManagerProps {
 }
 
 const CHORD_TYPES = Object.keys(CHORD_INTERVALS);
+
+const getRelativeMinorLabel = (majorRoot: string) => {
+  const idx = NOTE_TO_INDEX[majorRoot];
+  const minorIdx = (((idx - 3) % 12) + 12) % 12;
+  return PREFERRED_ROOT_NAMES_MINOR[minorIdx];
+};
+
+const formatNoteLabel = (name: string, isMinorMode: boolean) => {
+  let label = name === 'Ais' ? 'B' : name;
+  if (isMinorMode) {
+      label = label.toLowerCase();
+  } else {
+      label = label.charAt(0).toUpperCase() + label.slice(1);
+  }
+  return label;
+};
 
 const ChordManager: React.FC<ChordManagerProps> = ({ 
   chordLists, 
@@ -45,6 +61,32 @@ const ChordManager: React.FC<ChordManagerProps> = ({
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [showOriginalKeyPicker, setShowOriginalKeyPicker] = useState(false);
+  const [tempOriginalRoot, setTempOriginalRoot] = useState('C');
+  const [tempOriginalIsMajor, setTempOriginalIsMajor] = useState(true);
+  const [tempOriginalMinorVariant, setTempOriginalMinorVariant] = useState('Moll (Natürlich)');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [notification, setNotification] = useState<string | null>(null);
+
+  useEffect(() => {
+    applyImportedKey(activeList);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeListId]);
+
+  useEffect(() => {
+    if (confirmDeleteId) {
+      const timer = setTimeout(() => setConfirmDeleteId(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [confirmDeleteId]);
+
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   const activeList = useMemo(() => 
     chordLists.find(l => l.id === activeListId) || chordLists[0], 
@@ -124,57 +166,110 @@ const ChordManager: React.FC<ChordManagerProps> = ({
   };
 
   // Detect Key from chords
-  const bestKeyInfo = useMemo(() => {
-    if (chords.length === 0) return null;
-    const noteCounts = new Array(12).fill(0);
-    chords.forEach(chord => {
-      const rootIndex = NOTE_TO_INDEX[chord.root];
-      const intervals = CHORD_INTERVALS[chord.type];
-      if (rootIndex !== undefined && intervals) {
-        intervals.forEach(interval => {
-          const noteIndex = (rootIndex + interval) % 12;
-          noteCounts[noteIndex] += 10; // Multiply by 10 to satisfy totalSamples >= 5 in KeyDetector
+  const calculateKeyMatchPercent = (root: string, mode: string, chs: Chord[]): number => {
+    if (chs.length === 0) return 0;
+    const keyRootIndex = NOTE_TO_INDEX[root.toLowerCase()] ?? NOTE_TO_INDEX[root];
+    const keyScale = SCALES[mode];
+    if (keyRootIndex === undefined || !keyScale) return 0;
+    const keyNotes = new Set(keyScale.map(i => (keyRootIndex + i) % 12));
+    let totalMatch = 0;
+    chs.forEach(chord => {
+      const chordRootIndex = NOTE_TO_INDEX[chord.root];
+      const chordIntervals = CHORD_INTERVALS[chord.type] || [];
+      let matchCount = 0;
+      if (chordRootIndex !== undefined) {
+        chordIntervals.forEach(interval => {
+          if (keyNotes.has((chordRootIndex + interval) % 12)) matchCount++;
         });
+        totalMatch += chordIntervals.length > 0 ? (matchCount / chordIntervals.length) : 0;
       }
     });
-    const results = KeyDetector.detectKey(noteCounts);
-    if (results.length === 0) return null;
-    const bestKey = results[0];
+    return Math.round((totalMatch / chs.length) * 100);
+  };
 
-    // Calculate average chord match for a more logical percentage
-    let totalMatch = 0;
-    const keyRootIndex = NOTE_TO_INDEX[bestKey.root.toLowerCase()] ?? NOTE_TO_INDEX[bestKey.root];
-    const keyScale = SCALES[bestKey.mode];
-    if (keyRootIndex !== undefined && keyScale) {
-        const keyNotes = new Set(keyScale.map(i => (keyRootIndex + i) % 12));
-        chords.forEach(chord => {
-            const chordRootIndex = NOTE_TO_INDEX[chord.root];
-            const chordIntervals = CHORD_INTERVALS[chord.type] || [];
-            let matchCount = 0;
-            if (chordRootIndex !== undefined) {
-                chordIntervals.forEach(interval => {
-                    if (keyNotes.has((chordRootIndex + interval) % 12)) matchCount++;
-                });
-                totalMatch += chordIntervals.length > 0 ? (matchCount / chordIntervals.length) : 0;
-            }
-        });
+  const findBestKey = (chs: Chord[]): { root: string; mode: string; matchPercent: number } | null => {
+    if (chs.length === 0) return null;
+
+    let bestMatch = -1;
+    let bestRoot = '';
+    let bestMode = '';
+
+    for (let i = 0; i < 12; i++) {
+      const majorRoot = PREFERRED_ROOT_NAMES_MAJOR[i];
+      const majorDisplay = majorRoot.charAt(0).toUpperCase() + majorRoot.slice(1);
+      const majorMatch = calculateKeyMatchPercent(majorDisplay, 'Dur', chs);
+      if (majorMatch > bestMatch) {
+        bestMatch = majorMatch;
+        bestRoot = majorDisplay;
+        bestMode = 'Dur';
+      }
+
+      const minorRoot = PREFERRED_ROOT_NAMES_MINOR[i];
+      const minorDisplay = minorRoot.charAt(0).toUpperCase() + minorRoot.slice(1);
+      const variants = ['Moll (Natürlich)', 'Moll (Harmonisch)', 'Moll (Melodisch)'];
+      for (const variant of variants) {
+        const minorMatch = calculateKeyMatchPercent(minorDisplay, variant, chs);
+        if (minorMatch > bestMatch) {
+          bestMatch = minorMatch;
+          bestRoot = minorDisplay;
+          bestMode = variant;
+        }
+      }
     }
-    const avgMatch = chords.length > 0 ? Math.round((totalMatch / chords.length) * 100) : 0;
+    return { root: bestRoot, mode: bestMode, matchPercent: bestMatch };
+  };
 
-    return { key: bestKey, matchPercent: avgMatch };
+  const bestKeyInfo = useMemo(() => {
+    const best = findBestKey(chords);
+    if (!best) return null;
+    return {
+      key: { root: best.root, mode: best.mode, confidence: best.matchPercent / 100, correlation: best.matchPercent / 100 },
+      matchPercent: best.matchPercent
+    };
   }, [chords]);
 
+  const effectiveKeyInfo = useMemo(() => {
+    if (!activeList.originalKeyRoot) return bestKeyInfo;
+    const mode = activeList.originalIsMajor ? 'Dur' : (activeList.originalMinorVariant || 'Moll (Natürlich)');
+    const matchPercent = calculateKeyMatchPercent(activeList.originalKeyRoot, mode, chords);
+    return { key: { root: activeList.originalKeyRoot, mode }, matchPercent };
+  }, [activeList.originalKeyRoot, activeList.originalIsMajor, activeList.originalMinorVariant, bestKeyInfo, chords]);
+
+  const displayKeyRoot = activeList.originalKeyRoot || bestKeyInfo?.key.root || 'C';
+  const displayIsMajor = activeList.originalKeyRoot !== undefined
+    ? (activeList.originalIsMajor ?? true)
+    : (bestKeyInfo?.key.mode === 'Dur');
+  const displayMinorVariant = activeList.originalKeyRoot !== undefined
+    ? (activeList.originalMinorVariant || 'Moll (Natürlich)')
+    : (bestKeyInfo?.key.mode || 'Moll (Natürlich)');
+
+  const hasOriginalKey = activeList.originalKeyRoot !== undefined;
+
+  const fbMode = originalIsMajor ? 'Dur' : originalMinorVariant;
+  const isAlreadyOnFingerboard = effectiveKeyInfo
+    ? (originalRoot === effectiveKeyInfo.key.root && fbMode === effectiveKeyInfo.key.mode)
+    : false;
+
+  const showGriffbrettInfo = effectiveKeyInfo && (
+    (originalRoot !== effectiveKeyInfo.key.root || fbMode !== effectiveKeyInfo.key.mode) ||
+    (originalRoot === effectiveKeyInfo.key.root && fbMode === effectiveKeyInfo.key.mode && transpose !== 0)
+  );
+  const isDifferentKey = effectiveKeyInfo && (
+    originalRoot !== effectiveKeyInfo.key.root || fbMode !== effectiveKeyInfo.key.mode
+  );
+
   const handleApplyKey = () => {
-    if (bestKeyInfo && onApplyKey) {
-      onApplyKey(bestKeyInfo.key.root, bestKeyInfo.key.mode);
+    if (isAlreadyOnFingerboard) return;
+    if (effectiveKeyInfo && onApplyKey) {
+      onApplyKey(effectiveKeyInfo.key.root, effectiveKeyInfo.key.mode);
     }
   };
 
   const calculateChordMatch = (chord: Chord): number => {
-    if (!bestKeyInfo) return 0;
-    const keyRootIndex = NOTE_TO_INDEX[bestKeyInfo.key.root.toLowerCase()] ?? NOTE_TO_INDEX[bestKeyInfo.key.root];
+    if (!effectiveKeyInfo) return 0;
+    const keyRootIndex = NOTE_TO_INDEX[effectiveKeyInfo.key.root.toLowerCase()] ?? NOTE_TO_INDEX[effectiveKeyInfo.key.root];
     if (keyRootIndex === undefined) return 0;
-    const keyScale = SCALES[bestKeyInfo.key.mode];
+    const keyScale = SCALES[effectiveKeyInfo.key.mode];
     if (!keyScale) return 0;
     
     const keyNotes = new Set(keyScale.map(i => (keyRootIndex + i) % 12));
@@ -193,6 +288,34 @@ const ChordManager: React.FC<ChordManagerProps> = ({
     return chordIntervals.length > 0 ? Math.round((matchCount / chordIntervals.length) * 100) : 0;
   };
 
+  const handleConfirmOriginalKey = () => {
+    const newLists = chordLists.map(list =>
+      list.id === activeListId
+        ? { ...list, originalKeyRoot: tempOriginalRoot, originalIsMajor: tempOriginalIsMajor, originalMinorVariant: tempOriginalMinorVariant }
+        : list
+    );
+    onUpdateLists(newLists);
+    const mode = tempOriginalIsMajor ? 'Dur' : tempOriginalMinorVariant;
+    onApplyKey?.(tempOriginalRoot, mode);
+    setShowOriginalKeyPicker(false);
+  };
+
+  const handleResetOriginalKey = () => {
+    const newLists = chordLists.map(list =>
+      list.id === activeListId
+        ? { ...list, originalKeyRoot: undefined, originalIsMajor: undefined, originalMinorVariant: undefined }
+        : list
+    );
+    onUpdateLists(newLists);
+  };
+
+  const openOriginalKeyPicker = () => {
+    setTempOriginalRoot(displayKeyRoot);
+    setTempOriginalIsMajor(displayIsMajor);
+    setTempOriginalMinorVariant(displayMinorVariant);
+    setShowOriginalKeyPicker(true);
+  };
+
   // --- List Management ---
   const handleCreateList = () => {
     const newList: ChordList = {
@@ -206,10 +329,21 @@ const ChordManager: React.FC<ChordManagerProps> = ({
   };
 
   const handleDeleteList = () => {
-    if (chordLists.length <= 1) return;
+    setConfirmDeleteId(null);
     const newLists = chordLists.filter(l => l.id !== activeListId);
-    onUpdateLists(newLists);
-    onSelectList(newLists[0].id);
+    if (newLists.length === 0) {
+      const defaultList: ChordList = {
+        id: Math.random().toString(36).substring(7),
+        name: 'Neues Lied',
+        chords: [],
+        notes: ''
+      };
+      onUpdateLists([defaultList]);
+      onSelectList(defaultList.id);
+    } else {
+      onUpdateLists(newLists);
+      onSelectList(newLists[0].id);
+    }
   };
 
   const handleStartEditName = () => {
@@ -235,12 +369,12 @@ const ChordManager: React.FC<ChordManagerProps> = ({
   };
 
   const handleExport = () => {
-    const dataStr = JSON.stringify(chordLists, null, 2);
+    const dataStr = JSON.stringify([activeList], null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    const safeName = activeList.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const safeName = activeList.name.replace(/[\\/:*?"<>|]/g, '_');
     link.download = `${safeName}.json`;
     document.body.appendChild(link);
     link.click();
@@ -248,43 +382,81 @@ const ChordManager: React.FC<ChordManagerProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const raw = JSON.parse(event.target?.result as string);
-        if (!Array.isArray(raw) || raw.length === 0) {
-          alert('Ungültiges Dateiformat.');
-          return;
-        }
-        const normalized: ChordList[] = raw.map((item: any) => ({
-          id: item.id || Math.random().toString(36).substring(7),
-          name: item.name || 'Importiertes Lied',
-          chords: Array.isArray(item.chords) ? item.chords : [],
-          notes: typeof item.notes === 'string' ? item.notes : '',
-        }));
-        const currentIsEmpty = activeList.chords.length === 0 && !activeList.notes;
-        if (currentIsEmpty) {
-          const updatedLists = chordLists.map(l =>
-            l.id === activeListId ? { ...normalized[0], id: activeListId } : l
-          );
-          onUpdateLists(updatedLists);
-        } else {
-          onUpdateLists([...chordLists, ...normalized]);
-          onSelectList(normalized[0].id);
-        }
-      } catch (error) {
-        alert('Fehler beim Importieren der Datei.');
+  const applyImportedKey = (imported: ChordList) => {
+    if (imported.originalKeyRoot) {
+      const mode = imported.originalIsMajor ? 'Dur' : (imported.originalMinorVariant || 'Moll (Natürlich)');
+      onApplyKey?.(imported.originalKeyRoot, mode);
+    } else if (imported.chords.length > 0) {
+      const best = findBestKey(imported.chords);
+      if (best) {
+        onApplyKey?.(best.root, best.mode);
       }
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    };
-    reader.readAsText(file);
+    }
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const allNormalized: ChordList[] = [];
+    let fileCount = 0;
+    let failCount = 0;
+
+    for (const file of Array.from(files) as File[]) {
+      fileCount++;
+      try {
+        const text = await file.text();
+        const raw = JSON.parse(text);
+        const items = Array.isArray(raw) ? raw : [raw];
+        for (const item of items) {
+          allNormalized.push({
+            id: Math.random().toString(36).substring(7),
+            name: item.name || 'Importiertes Lied',
+            chords: Array.isArray(item.chords) ? item.chords : [],
+            notes: typeof item.notes === 'string' ? item.notes : '',
+            originalKeyRoot: item.originalKeyRoot,
+            originalIsMajor: item.originalIsMajor,
+            originalMinorVariant: item.originalMinorVariant,
+          });
+        }
+      } catch {
+        failCount++;
+      }
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
+
+    if (allNormalized.length === 0) {
+      setNotification(`Keine gültigen Daten in ${fileCount} Datei${fileCount !== 1 ? 'en' : ''} gefunden.`);
+      return;
+    }
+
+    const failMsg = failCount > 0
+      ? `${failCount} Datei${failCount !== 1 ? 'en' : ''} konnten nicht gelesen werden. `
+      : '';
+    setNotification(`${failMsg}${allNormalized.length} Lied${allNormalized.length !== 1 ? 'er' : ''} aus ${fileCount} Datei${fileCount !== 1 ? 'en' : ''} erfolgreich importiert.`);
+
+    const currentIsEmpty = activeList.chords.length === 0 && !activeList.notes;
+    if (currentIsEmpty) {
+      const [first, ...rest] = allNormalized;
+      const updatedLists = chordLists.map(l =>
+        l.id === activeListId ? { ...first, id: activeListId } : l
+      );
+      onUpdateLists(rest.length > 0 ? [...updatedLists, ...rest] : updatedLists);
+      applyImportedKey(first);
+    } else {
+      onUpdateLists([...chordLists, ...allNormalized]);
+      onSelectList(allNormalized[0].id);
+    }
   };
 
   return (
+    <>
+    {notification && (
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-800 border border-slate-600 text-slate-200 px-4 py-2 rounded-lg shadow-xl text-xs font-medium animate-in fade-in slide-in-from-top-2">
+        {notification}
+      </div>
+    )}
     <div className="bg-slate-900/80 rounded-2xl border border-slate-800 p-4 shadow-xl flex-1 flex flex-col min-h-[400px]">
       
       {/* List Header & Controls */}
@@ -306,9 +478,16 @@ const ChordManager: React.FC<ChordManagerProps> = ({
              <button onClick={handleCreateList} className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors" title="Neues Lied erstellen">
                 <Plus size={14} />
              </button>
-             <button onClick={handleDeleteList} disabled={chordLists.length <= 1} className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-red-400 transition-colors disabled:opacity-30" title="Aktuelles Lied löschen">
-                <Trash2 size={14} />
-             </button>
+              {confirmDeleteId === activeListId ? (
+                 <div className="flex items-center gap-1">
+                   <button onClick={handleDeleteList} className="px-1.5 py-0.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-400 text-[10px] font-bold transition-colors">Ja</button>
+                   <button onClick={() => setConfirmDeleteId(null)} className="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-400 text-[10px] transition-colors">Nein</button>
+                 </div>
+              ) : (
+                 <button onClick={() => setConfirmDeleteId(activeListId)} className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-red-400 transition-colors" title="Aktuelles Lied löschen">
+                   <Trash2 size={14} />
+                 </button>
+              )}
           </div>
         </div>
 
@@ -343,7 +522,7 @@ const ChordManager: React.FC<ChordManagerProps> = ({
               <button onClick={() => fileInputRef.current?.click()} className="p-1 text-slate-400 hover:text-slate-200" title="Akkorde importieren">
                 <Upload size={14} />
               </button>
-              <input type="file" ref={fileInputRef} onChange={handleImport} accept=".json" className="hidden" />
+              <input type="file" ref={fileInputRef} onChange={handleImport} accept=".json" multiple className="hidden" />
            </div>
         </div>
       </div>
@@ -363,25 +542,115 @@ const ChordManager: React.FC<ChordManagerProps> = ({
         )}
       </div>
       
-      {bestKeyInfo && (
-        <div className="bg-slate-800/60 rounded-xl p-3 mb-4 flex items-center justify-between border border-slate-700/50">
-           <div>
-              <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-0.5">Passende Tonart</div>
-              <div className="text-sm font-bold text-emerald-400">
-                {bestKeyInfo.key.root} {bestKeyInfo.key.mode} <span className="text-xs font-normal text-emerald-500/70 ml-1">({bestKeyInfo.matchPercent}%)</span>
+      <div className="bg-slate-800/60 rounded-xl p-3 mb-4 border border-slate-700/50">
+        {bestKeyInfo ? (
+          <>
+            <div className="flex items-center justify-between">
+              <div className="flex items-start gap-4">
+                <div>
+                  <div className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 ${hasOriginalKey ? 'text-slate-500' : 'text-amber-400'}`}>Erkannte Tonart</div>
+                  <span className={`text-sm font-bold ${hasOriginalKey ? 'text-slate-500' : 'text-amber-400'}`}>
+                    {bestKeyInfo.key.root} {bestKeyInfo.key.mode} <span className="text-xs font-normal opacity-70 ml-0.5">({bestKeyInfo.matchPercent}%)</span>
+                  </span>
+                </div>
+                <div className="flex items-start gap-1">
+                  <button
+                    onClick={openOriginalKeyPicker}
+                    className="group flex flex-col items-start rounded px-1.5 py-0.5 -mx-1.5 -my-0.5 hover:bg-slate-700/40 transition-colors cursor-pointer"
+                    title="Original-Tonart festlegen"
+                  >
+                    <div className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 flex items-center gap-1 ${hasOriginalKey ? 'text-emerald-400' : 'text-slate-500'}`}>
+                      Original-Tonart
+                      <Edit2 size={9} className="opacity-40 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                    {hasOriginalKey && effectiveKeyInfo ? (
+                      <span className="text-sm font-bold text-emerald-400">
+                        {effectiveKeyInfo.key.root} {effectiveKeyInfo.key.mode} <span className="text-xs font-normal text-emerald-500/70 ml-0.5">({effectiveKeyInfo.matchPercent}%)</span>
+                      </span>
+                    ) : (
+                      <span className="text-sm text-slate-600">—</span>
+                    )}
+                  </button>
+                  {hasOriginalKey && (
+                    <button
+                      onClick={handleResetOriginalKey}
+                      className="p-0.5 text-slate-500 hover:text-slate-300 transition-colors"
+                      title="Zur erkannten Tonart zurück"
+                    >
+                      <RotateCcw size={11} />
+                    </button>
+                  )}
+                </div>
+              {showGriffbrettInfo && (
+                <div>
+                  <div className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 ${isDifferentKey ? 'text-red-400' : 'text-slate-500'}`}>Griffbrett</div>
+                  <span className={`text-sm font-bold ${isDifferentKey ? 'text-red-400' : 'text-slate-300'}`}>{currentKeyRoot} {fbMode}</span>
+                </div>
+              )}
               </div>
-           </div>
-           {onApplyKey && (
-             <button 
-                onClick={handleApplyKey}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors border border-emerald-500/20"
-             >
-                <span className="text-xs font-bold">Übernehmen</span>
-                <ArrowRightCircle size={14} />
-             </button>
-           )}
-        </div>
-      )}
+              {onApplyKey && effectiveKeyInfo && (
+                <button 
+                  onClick={handleApplyKey}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors border shrink-0 ${isAlreadyOnFingerboard ? 'opacity-30 pointer-events-none' : ''} ${hasOriginalKey ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20'}`}
+                >
+                  <span className="text-xs font-bold">Übernehmen</span>
+                  <ArrowRightCircle size={14} />
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <div className="flex items-start gap-4">
+              <button
+                onClick={openOriginalKeyPicker}
+                className="group flex flex-col items-start rounded px-1.5 py-0.5 -mx-1.5 -my-0.5 hover:bg-slate-700/40 transition-colors cursor-pointer"
+                title="Original-Tonart festlegen"
+              >
+                <div className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 flex items-center gap-1 ${hasOriginalKey && effectiveKeyInfo ? 'text-emerald-400' : 'text-slate-500'}`}>
+                  Original-Tonart
+                  <Edit2 size={9} className="opacity-40 group-hover:opacity-100 transition-opacity" />
+                </div>
+                {hasOriginalKey && effectiveKeyInfo ? (
+                  <span className="text-sm font-bold text-emerald-400">
+                    {effectiveKeyInfo.key.root} {effectiveKeyInfo.key.mode}
+                  </span>
+                ) : (
+                  <span className="text-sm text-slate-600">—</span>
+                )}
+              </button>
+              {showGriffbrettInfo && (
+                <div>
+                  <div className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 ${isDifferentKey ? 'text-red-400' : 'text-slate-500'}`}>Griffbrett</div>
+                  <span className={`text-sm font-bold ${isDifferentKey ? 'text-red-400' : 'text-slate-300'}`}>{currentKeyRoot} {fbMode}</span>
+                </div>
+              )}
+              </div>
+              <div className="flex items-center gap-1">
+                {hasOriginalKey && (
+                  <button
+                    onClick={handleResetOriginalKey}
+                    className="p-0.5 text-slate-500 hover:text-slate-300 transition-colors"
+                    title="Zurücksetzen"
+                  >
+                    <RotateCcw size={11} />
+                  </button>
+                )}
+                {onApplyKey && hasOriginalKey && effectiveKeyInfo && (
+                  <button 
+                    onClick={handleApplyKey}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors border shrink-0 ${isAlreadyOnFingerboard ? 'opacity-30 pointer-events-none' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20'}`}
+                  >
+                    <span className="text-xs font-bold">Übernehmen</span>
+                    <ArrowRightCircle size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
 
       {showAddMenu && (
         <div className="bg-slate-800/80 rounded-xl p-3 mb-4 animate-in fade-in slide-in-from-top-2 border border-slate-700">
@@ -529,6 +798,48 @@ const ChordManager: React.FC<ChordManagerProps> = ({
         </div>
       </div>
     </div>
+
+    {showOriginalKeyPicker && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowOriginalKeyPicker(false)}>
+        <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl p-4 w-[420px] max-w-[95vw]" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold text-slate-200">Original-Tonart festlegen</h3>
+            <button onClick={() => setShowOriginalKeyPicker(false)} className="text-slate-400 hover:text-white transition-colors">
+              <X size={16} />
+            </button>
+          </div>
+          <FingerboardControls
+            root={tempOriginalRoot}
+            isMajor={tempOriginalIsMajor}
+            minorVariant={tempOriginalMinorVariant}
+            transpose={0}
+            onRootChange={setTempOriginalRoot}
+            onModeChange={setTempOriginalIsMajor}
+            onVariantChange={setTempOriginalMinorVariant}
+            onTransposeChange={() => {}}
+            getRelativeMinorLabel={getRelativeMinorLabel}
+            formatNoteLabel={formatNoteLabel}
+            hideTranspose={true}
+            compact={true}
+          />
+          <div className="flex justify-end gap-2 mt-4">
+            <button
+              onClick={() => setShowOriginalKeyPicker(false)}
+              className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-xs font-bold transition-colors"
+            >
+              Abbrechen
+            </button>
+            <button
+              onClick={handleConfirmOriginalKey}
+              className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-lg text-xs font-bold transition-colors"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
 

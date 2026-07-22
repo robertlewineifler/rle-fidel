@@ -13,6 +13,8 @@ interface FingerboardControlsProps {
   onTransposeChange: (semitones: number) => void;
   getRelativeMinorLabel: (majorRoot: string) => string;
   formatNoteLabel: (name: string, isMinor: boolean) => string;
+  hideTranspose?: boolean;
+  compact?: boolean;
 }
 
 const ROOT_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
@@ -27,12 +29,14 @@ const FingerboardControls: React.FC<FingerboardControlsProps> = ({
   onVariantChange,
   onTransposeChange,
   getRelativeMinorLabel,
-  formatNoteLabel
+  formatNoteLabel,
+  hideTranspose = false,
+  compact = false
 }) => {
   const currentRootIndex = NOTE_TO_INDEX[root];
 
   return (
-    <div className="w-full bg-slate-900/80 rounded-2xl border border-slate-800 p-3 shadow-xl flex flex-col gap-[2px] shrink-0">
+    <div className={`w-full flex flex-col gap-[2px] ${compact ? '' : 'bg-slate-900/80 rounded-2xl border border-slate-800 p-3 shadow-xl shrink-0'}`}>
       <div className="grid grid-cols-12 w-full gap-[1px]">
         {ROOT_INDICES.map((idx) => {
           const currentMajorRoot = PREFERRED_ROOT_NAMES_MAJOR[idx];
@@ -68,6 +72,7 @@ const FingerboardControls: React.FC<FingerboardControlsProps> = ({
         })}
       </div>
 
+      {!hideTranspose && (
       <div className="w-full mt-1">
         <div className="flex w-full justify-between items-center gap-[1px] bg-slate-800/50 rounded-lg p-[1px] border border-slate-700">
           <button 
@@ -112,6 +117,7 @@ const FingerboardControls: React.FC<FingerboardControlsProps> = ({
           })}
         </div>
       </div>
+      )}
 
       <div className="w-full mt-1">
         <div className={`grid grid-cols-3 gap-[1px] transition-opacity duration-300 ${isMajor ? 'opacity-40 pointer-events-none grayscale' : 'opacity-100'}`}>

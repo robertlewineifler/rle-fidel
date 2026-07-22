@@ -88,6 +88,10 @@ const App: React.FC = () => {
   ]);
   const [activeChordListId, setActiveChordListId] = useState<string>('default');
 
+  useEffect(() => {
+    setFbTranspose(0);
+  }, [activeChordListId]);
+
   const activeChordList = useMemo(() => 
     chordLists.find(l => l.id === activeChordListId) || chordLists[0], 
   [chordLists, activeChordListId]);
@@ -289,6 +293,8 @@ const App: React.FC = () => {
     setFbIsMajor(true);
     setFbMinorVariant('Moll (Natürlich)');
     setFbTranspose(0);
+    setChordLists([{ id: 'default', name: 'Neues Lied', chords: [], notes: '' }]);
+    setActiveChordListId('default');
     resetKeyDetection();
     setRecordedFile(null); 
     

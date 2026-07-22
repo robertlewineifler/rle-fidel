@@ -38,6 +38,9 @@ export interface ChordList {
   name: string;
   chords: Chord[];
   notes: string;
+  originalKeyRoot?: string;
+  originalIsMajor?: boolean;
+  originalMinorVariant?: string;
 }
 
 export interface HistoryItem {
