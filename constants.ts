@@ -83,6 +83,9 @@ export const ROOT_NOTES = [
   'C', 'Des', 'D', 'Es', 'E', 'F', 'Fis', 'G', 'As', 'A', 'B', 'H'
 ];
 
+export const SHARP_CHORD_ROOTS = ['A', 'Ais', 'H', 'C', 'Cis', 'D', 'Dis', 'E', 'F', 'Fis', 'G', 'Gis'];
+export const FLAT_CHORD_ROOTS  = ['A', 'B',  'H', 'C', 'Des', 'D', 'Es',  'E', 'F', 'Ges', 'G', 'As'];
+
 export const SCALES: { [key: string]: number[] } = {
   'Dur': [0, 2, 4, 5, 7, 9, 11],
   'Moll (Natürlich)': [0, 2, 3, 5, 7, 8, 10],   // W H W W H W W

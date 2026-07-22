@@ -13,10 +13,14 @@ interface ScaleNotationProps {
   hideRootHighlight?: boolean;
   keyRootName?: string;
   keyIntervals?: number[];
+  arpeggio?: boolean;
 }
 
 const DIATONIC_OFFSETS = [0, 2, 4, 5, 7, 9, 11];
 const FREQ_C4 = 440 * Math.pow(2, -9/12);
+
+const VIOLIN_MIN_ABS = -5;
+const VIOLIN_MAX_ABS = 23;
 
 const ScaleNotation: React.FC<ScaleNotationProps> = ({ 
    rootName, 
@@ -29,9 +33,10 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
    hideBackground,
    hideRootHighlight,
    keyRootName,
-   keyIntervals
+   keyIntervals,
+   arpeggio = false
 }) => {
-  
+   
   const parseRoot = (name: string) => {
     if (name === 'H') return { diatonicIndex: 6, accidental: 0 }; 
     if (name === 'B') return { diatonicIndex: 6, accidental: -1 }; 
@@ -42,45 +47,98 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
     } else if (name.endsWith('es') || name === 'As' || name === 'Es') {
         accidental = -1;
     }
-    
     const diatonicIndex = ['C', 'D', 'E', 'F', 'G', 'A', 'B'].indexOf(baseChar);
     return { diatonicIndex: diatonicIndex !== -1 ? diatonicIndex : 0, accidental };
   };
 
   const { diatonicIndex: rootDiatonic, accidental: rootAccidental } = parseRoot(rootName);
-  const startOctaveOffset = 0; 
+  const rootSemitone = DIATONIC_OFFSETS[rootDiatonic] + rootAccidental;
 
-  const notes = useMemo(() => {
-    const result = [];
-    const rootSemitone = DIATONIC_OFFSETS[rootDiatonic] + rootAccidental;
-    
+  const noteToObject = (abs: number, idx: number, isRootForScale: boolean | ((i: number) => boolean)) => {
+    const relSemitone = ((abs - rootSemitone) % 12 + 12) % 12;
+    const octaveOffset = Math.floor((abs - rootSemitone) / 12);
+    const intervalIdx = intervals.indexOf(relSemitone);
+
+    let stepOffset: number;
+    if (diatonicSteps && intervalIdx >= 0) {
+      stepOffset = diatonicSteps[intervalIdx];
+    } else {
+      stepOffset = intervalIdx;
+    }
+
+    const currentDiatonicRaw = rootDiatonic + stepOffset + octaveOffset * 7;
+    const currentDiatonic = ((currentDiatonicRaw % 7) + 7) % 7;
+    const octaveShift = Math.floor(currentDiatonicRaw / 7);
+
+    const accidentalVal = abs - (DIATONIC_OFFSETS[currentDiatonic] + octaveShift * 12);
+    const visualStep = currentDiatonic + octaveShift * 7;
+    const frequency = FREQ_C4 * Math.pow(2, abs / 12);
+
+    const isRoot = typeof isRootForScale === 'function' ? isRootForScale(idx) : (relSemitone === 0);
+
+    return {
+      id: idx,
+      visualStep,
+      accidental: accidentalVal,
+      isRoot,
+      frequency,
+      semitoneDistance: arpeggio ? relSemitone : abs - rootSemitone,
+      absSemitone: abs
+    };
+  };
+
+  // --- Arpeggio mode: multi-octave, violin range ---
+  const arpeggioNotes = useMemo(() => {
+    if (!arpeggio) return [];
+
+    const uniqueAbs = new Set<number>();
+    const minOct = Math.floor((VIOLIN_MIN_ABS - rootSemitone - 11) / 12);
+    const maxOct = Math.ceil((VIOLIN_MAX_ABS - rootSemitone + 11) / 12);
+
+    for (let oct = minOct; oct <= maxOct; oct++) {
+      for (let i = 0; i < intervals.length; i++) {
+        const abs = rootSemitone + intervals[i] + oct * 12;
+        if (abs >= VIOLIN_MIN_ABS && abs <= VIOLIN_MAX_ABS) {
+          uniqueAbs.add(abs);
+        }
+      }
+    }
+
+    const sorted = Array.from(uniqueAbs).sort((a, b) => a - b);
+    if (sorted.length === 0) return [];
+
+    let rootIdx = 0;
+    for (let i = 0; i < sorted.length; i++) {
+      if (((sorted[i] - rootSemitone) % 12 + 12) % 12 === 0) {
+        rootIdx = i;
+        break;
+      }
+    }
+
+    const pattern: number[] = [];
+    for (let i = rootIdx; i < sorted.length; i++) pattern.push(sorted[i]);
+    for (let i = sorted.length - 2; i >= 0; i--) pattern.push(sorted[i]);
+    for (let i = 1; i <= rootIdx; i++) pattern.push(sorted[i]);
+
+    return pattern.map((abs, idx) => noteToObject(abs, idx, false));
+  }, [arpeggio, rootSemitone, intervals, diatonicSteps]);
+
+  // --- Scale mode: single octave, original logic ---
+  const scaleNotes = useMemo(() => {
+    if (arpeggio) return [];
+
+    const result: ReturnType<typeof noteToObject>[] = [];
     const fullIntervals = [...intervals];
     if (fullIntervals.length === 7) fullIntervals.push(12);
 
     for (let i = 0; i < fullIntervals.length; i++) {
-        const stepOffset = diatonicSteps ? diatonicSteps[i] : i;
-        const currentDiatonicRaw = rootDiatonic + stepOffset;
-        const currentDiatonic = currentDiatonicRaw % 7;
-        const octaveShift = Math.floor(currentDiatonicRaw / 7);
-
-        const targetAbsSemitone = rootSemitone + fullIntervals[i];
-        
-        let accidentalVal = targetAbsSemitone - (DIATONIC_OFFSETS[currentDiatonic] + (startOctaveOffset + octaveShift) * 12);
-        const visualStep = currentDiatonic + ((startOctaveOffset + octaveShift) * 7);
-        const frequency = FREQ_C4 * Math.pow(2, targetAbsSemitone / 12);
-
-        result.push({
-            id: i,
-            visualStep,
-            accidental: accidentalVal,
-            isRoot: i === 0 || i === fullIntervals.length - 1,
-            frequency,
-            semitoneDistance: fullIntervals[i],
-            absSemitone: targetAbsSemitone
-        });
+      const abs = rootSemitone + fullIntervals[i];
+      result.push(noteToObject(abs, i, (j: number) => j === 0 || j === fullIntervals.length - 1));
     }
     return result;
-  }, [rootDiatonic, rootAccidental, intervals, startOctaveOffset, diatonicSteps]); 
+  }, [arpeggio, rootSemitone, intervals, diatonicSteps]);
+
+  const notes = arpeggio ? arpeggioNotes : scaleNotes;
 
   const keyRootSemitone = useMemo(() => {
     if (!keyRootName) return -1;
@@ -95,22 +153,83 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
 
   const LINE_SPACING = 10;
   const NOTE_RADIUS = 5;
+  const KEY_SIG_SPACING = arpeggio ? 16 : 14;
   const getY = (step: number) => 30 + (11 - step) * (LINE_SPACING / 2);
+
+  const STAFF_MIN = 2;
+  const STAFF_MAX = 10;
 
   const isSharpKey = keySignatureCount > 0;
   const keySigCount = Math.abs(keySignatureCount);
   
-  // Y positions mapped directly to staff lines for key signature
-  // F5=35, C5=50, G5=30, D5=45, A4=60, E5=40, B4=55
-  const sharpY = [35, 50, 30, 45, 60, 40, 55];
-  // B4=55, E5=40, A4=60, D5=45, G4=65, C5=50, F4=70
-  const flatY = [55, 40, 60, 45, 65, 50, 70];
+  const sharpY = useMemo(() => [10, 7, 12, 8, 4, 11, 6].map(s => getY(s)), [getY]);
+  const flatY = useMemo(() => [6, 9, 5, 8, 4, 7, 2].map(s => getY(s)), [getY]);
+  const ARPEGGIO_NOTE_SPACING = 35;
+  const ARPEGGIO_ROOT_GAP = 25;
+  const ARPEGGIO_FIRST_NOTE_GAP = 5;
+  const ARPEGGIO_VIEWBOX_W = 800;
+  const SCALE_VIEWBOX_W = 800;
+  const ARPEGGIO_LEFT_PAD = 0;
 
-  // Dynamic start position to ensure notes never overlap with key signature
-  const STAFF_X_START = 80 + keySigCount * 14 + 10; 
-  const NOTE_SPACING = 75; 
-  
-  const dynamicWidth = Math.max(700, STAFF_X_START + (notes.length * NOTE_SPACING) + 40);
+  const STAFF_X_START = arpeggio
+    ? 80 + keySigCount * KEY_SIG_SPACING + ARPEGGIO_FIRST_NOTE_GAP
+    : 80 + keySigCount * KEY_SIG_SPACING + LINE_SPACING;
+
+  const scaleNoteSpacing = (() => {
+    if (notes.length <= 1) return 75;
+    const available = SCALE_VIEWBOX_W - STAFF_X_START - 40;
+    return available / (notes.length - 1);
+  })();
+
+  const NOTE_SPACING = arpeggio ? ARPEGGIO_NOTE_SPACING : scaleNoteSpacing;
+
+  const noteXs = useMemo(() => {
+    if (!arpeggio) return [] as number[];
+
+    const rootIndices: number[] = [];
+    for (let i = 0; i < notes.length; i++) {
+      if (notes[i].isRoot) rootIndices.push(i);
+    }
+
+    const gapBefore = new Set<number>();
+    const gapAfter = new Set<number>();
+
+    for (let k = 0; k < rootIndices.length - 1; k++) {
+      const r2 = rootIndices[k + 1];
+      const prev = notes[r2 - 1];
+      if (prev.absSemitone < notes[r2].absSemitone) {
+        gapBefore.add(r2);
+      } else {
+        gapAfter.add(r2);
+      }
+    }
+
+    const xs: number[] = [];
+    let gap = 0;
+    for (let i = 0; i < notes.length; i++) {
+      if (gapBefore.has(i)) gap += ARPEGGIO_ROOT_GAP;
+      xs.push(STAFF_X_START + i * NOTE_SPACING + gap);
+      if (gapAfter.has(i)) gap += ARPEGGIO_ROOT_GAP;
+    }
+    return xs;
+  }, [notes, STAFF_X_START, arpeggio]);
+
+  const viewBoxW = arpeggio ? ARPEGGIO_VIEWBOX_W : SCALE_VIEWBOX_W;
+  const staffLeft = arpeggio ? ARPEGGIO_LEFT_PAD : 0;
+  const staffRight = arpeggio ? viewBoxW - ARPEGGIO_LEFT_PAD : viewBoxW;
+
+  const minVisualStep = arpeggio ? Math.min(STAFF_MIN - 2, ...notes.map(n => n.visualStep)) : STAFF_MIN - 2;
+  const maxVisualStep = arpeggio ? Math.max(STAFF_MAX + 2, ...notes.map(n => n.visualStep)) : STAFF_MAX + 2;
+
+  const labelY1 = arpeggio ? getY(STAFF_MIN - 2) + 18 : 110;
+  const labelY2 = arpeggio ? getY(STAFF_MIN - 2) + 36 : 126;
+   
+  const viewBoxTop = getY(maxVisualStep) - 25;
+  const viewBoxBottom = arpeggio
+    ? Math.max(getY(minVisualStep) + 25, labelY2 + 10)
+    : getY(minVisualStep) + 25;
+  const viewBoxHeight = arpeggio ? (viewBoxBottom - viewBoxTop + 20) : 150;
+  const viewBoxY = arpeggio ? (viewBoxTop - 10) : 0;
 
   const formatModeLabel = () => {
     if (!modeLabel) return [];
@@ -124,7 +243,6 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
 
   const labelParts = formatModeLabel();
   
-  // Highlight Note logic
   const highlightIdx = highlightNoteName 
     ? (NOTE_TO_INDEX[highlightNoteName.toLowerCase()] ?? NOTE_TO_INDEX[highlightNoteName] ?? -1) 
     : -1;
@@ -138,21 +256,22 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
 
   return (
     <div className={`w-full h-full flex justify-center items-center ${!hideBackground ? 'bg-[#fdf6e3] rounded-lg border border-slate-300 p-2 shadow-inner' : ''}`}>
-      <svg width="100%" height="100%" viewBox={`0 0 ${dynamicWidth} 150`} preserveAspectRatio="xMidYMid meet" className="select-none w-full">
-        {/* Staff Lines (E4 to F5) */}
+      <svg width="100%" height="100%" viewBox={`0 ${viewBoxY} ${viewBoxW} ${viewBoxHeight}`} preserveAspectRatio="xMidYMid meet" className="select-none w-full">
+        {/* Staff Lines */}
         {[2, 4, 6, 8, 10].map(step => (
             <line 
                  key={step} 
-                 x1="0" y1={getY(step)} 
-                 x2="100%" y2={getY(step)} 
+                 x1={staffLeft} y1={getY(step)} 
+                 x2={staffRight} y2={getY(step)} 
                  stroke="#666" strokeWidth="1" 
              />
         ))}
 
-        {/* Treble Clef - properly sized and aligned around G line (y=65) */}
-        <text x="15" y={getY(8)} fontSize="65" fontFamily="Times New Roman, serif" fill="#000" textAnchor="middle" dominantBaseline="central">𝄞</text>
+        {/* Treble Clef */}
+        <text x={arpeggio ? 15 + ARPEGGIO_LEFT_PAD : 15} y={getY(8)} fontSize="65" fontFamily="Times New Roman, serif" fill="#000" textAnchor="middle" dominantBaseline="central">𝄞</text>
         
         {/* Key Label under Clef */}
+        {!arpeggio && (
         <g transform={`translate(25, ${getY(0) + 35})`}>
             <text x="0" y="0" fontSize="18" fontWeight="bold" fill="#444" textAnchor="middle" fontFamily="sans-serif">
                 {rootName}
@@ -163,10 +282,11 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
                 </text>
             ))}
         </g>
+        )}
 
         {/* Key Signature */}
         {Array.from({ length: keySigCount }).map((_, i) => {
-             const x = 40 + (i * 14);
+             const x = (arpeggio ? 40 + ARPEGGIO_LEFT_PAD : 40) + (i * KEY_SIG_SPACING);
              const y = isSharpKey ? sharpY[i] : flatY[i];
              return (
                  <text
@@ -186,10 +306,10 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
 
         {/* Notes */}
         {notes.map((note, i) => {
-            const x = STAFF_X_START + (i * NOTE_SPACING);
+            const x = arpeggio ? noteXs[i] : STAFF_X_START + (i * NOTE_SPACING);
             const y = getY(note.visualStep);
             
-            const stemUp = note.visualStep < 7;
+            const stemUp = arpeggio ? (note.visualStep < 6) : (note.visualStep < 7);
             const stemHeight = 35;
             
             const isNoteActiveFreq = activeFreq && Math.abs(12 * Math.log2(activeFreq / note.frequency)) < 0.4;
@@ -209,11 +329,11 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
               : note.semitoneDistance;
 
             const ledgers = [];
-            for (let s = 0; s >= note.visualStep; s -= 2) {
-                if (s % 2 === 0 && s <= 0) ledgers.push(s);
+            for (let s = STAFF_MIN - 2; s >= note.visualStep; s -= 2) {
+                if (s % 2 === 0 && s < STAFF_MIN) ledgers.push(s);
             }
-            for (let s = 12; s <= note.visualStep; s += 2) {
-                if (s >= 12) ledgers.push(s);
+            for (let s = STAFF_MAX + 2; s <= note.visualStep; s += 2) {
+                if (s > STAFF_MAX) ledgers.push(s);
             }
 
             return (
@@ -236,7 +356,7 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
                         <text 
                              x={x - 14} 
                              y={y - 1} 
-                             fontSize="26" 
+                     fontSize="26"
                              fill={strokeColor} 
                              textAnchor="middle"
                              fontFamily="Arial, sans-serif"
@@ -264,27 +384,27 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
                          strokeWidth="1.5"
                     />
 
-                    {/* Semitone Distance Label */}
-                    <text
-                        x={x}
-                        y={110} 
-                        fontSize="14"
-                        fill="#666"
-                        textAnchor="middle"
-                        className="font-mono font-bold"
-                    >
-                        {displayDistance !== undefined ? displayDistance : '\u00A0'}
-                    </text>
                     {/* Note Name */}
                     <text
                         x={x}
-                        y={126} 
-                        fontSize="16"
+                        y={labelY1} 
+                        fontSize={arpeggio ? 14 : 16}
                         fill="#888"
                         textAnchor="middle"
                         fontFamily="sans-serif"
                     >
                         {getNoteName(note.absSemitone)}
+                    </text>
+                    {/* Semitone Distance Label */}
+                    <text
+                        x={x}
+                        y={labelY2} 
+                        fontSize={arpeggio ? 12 : 14}
+                        fill="#666"
+                        textAnchor="middle"
+                        className="font-mono font-bold"
+                    >
+                        {displayDistance !== undefined ? displayDistance : 'X'}
                     </text>
                 </g>
             );

@@ -360,6 +360,8 @@ const FingerboardDisplay: React.FC<FingerboardDisplayProps> = ({
 
                             if (!isInScale && !isNoteActive && !hasChordHighlight) return null;
 
+                            const isNonScale = !isInScale && hasChordHighlight && !isNoteActive;
+
                             const activeStyle = isNoteActive 
                                 ? cursor.isMicInput 
                                     ? 'ring-[2px] ring-red-500 z-50 scale-105 shadow-[0_0_15px_rgba(239,68,68,0.5)]' 
@@ -406,9 +408,11 @@ const FingerboardDisplay: React.FC<FingerboardDisplayProps> = ({
                                             ? 'bg-amber-500 text-slate-900 font-bold z-20' 
                                             : !isNoteActive && semitone === 0 
                                                 ? 'bg-slate-800 text-slate-500 text-[18px]' 
-                                                : !isNoteActive 
-                                                    ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
-                                                    : 'bg-slate-700 text-white' 
+                                                : !isNoteActive && isNonScale
+                                                    ? 'bg-slate-800 text-slate-600 hover:bg-slate-700'
+                                                    : !isNoteActive 
+                                                        ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                                                        : 'bg-slate-700 text-white' 
                                             }
                                         `}
                                     >

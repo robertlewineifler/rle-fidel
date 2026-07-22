@@ -72,6 +72,29 @@ const FingerboardControls: React.FC<FingerboardControlsProps> = ({
         })}
       </div>
 
+      <div className="w-full mt-1">
+        <div className={`grid grid-cols-3 gap-[1px] transition-opacity duration-300 ${isMajor ? 'opacity-40 pointer-events-none grayscale' : 'opacity-100'}`}>
+          {['Natürlich', 'Harmonisch', 'Melodisch'].map((variantShort) => {
+            const fullVariant = `Moll (${variantShort})`;
+            const isActive = minorVariant === fullVariant;
+            return (
+              <button
+                key={variantShort}
+                onClick={() => onVariantChange(fullVariant)}
+                disabled={isMajor}
+                className={`h-6 flex items-center justify-center text-[9px] font-medium transition-all border first:rounded-l last:rounded-r
+                  ${isActive 
+                    ? 'bg-indigo-500 text-white border-indigo-400 z-10 shadow-sm' 
+                    : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'
+                  }`}
+              >
+                {variantShort}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {!hideTranspose && (
       <div className="w-full mt-1">
         <div className="flex w-full justify-between items-center gap-[1px] bg-slate-800/50 rounded-lg p-[1px] border border-slate-700">
@@ -118,29 +141,6 @@ const FingerboardControls: React.FC<FingerboardControlsProps> = ({
         </div>
       </div>
       )}
-
-      <div className="w-full mt-1">
-        <div className={`grid grid-cols-3 gap-[1px] transition-opacity duration-300 ${isMajor ? 'opacity-40 pointer-events-none grayscale' : 'opacity-100'}`}>
-          {['Natürlich', 'Harmonisch', 'Melodisch'].map((variantShort) => {
-            const fullVariant = `Moll (${variantShort})`;
-            const isActive = minorVariant === fullVariant;
-            return (
-              <button
-                key={variantShort}
-                onClick={() => onVariantChange(fullVariant)}
-                disabled={isMajor}
-                className={`h-6 flex items-center justify-center text-[9px] font-medium transition-all border first:rounded-l last:rounded-r
-                  ${isActive 
-                    ? 'bg-indigo-500 text-white border-indigo-400 z-10 shadow-sm' 
-                    : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'
-                  }`}
-              >
-                {variantShort}
-              </button>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 };

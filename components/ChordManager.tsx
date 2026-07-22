@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Layers, Plus, X, GripVertical, Music, ArrowRightCircle, Download, Upload, Edit2, Check, Trash2, List, ArrowRight, StickyNote, RotateCcw } from 'lucide-react';
 import { Chord, KeyResult, ChordList } from '../types';
-import { ROOT_NOTES, CHORD_INTERVALS, MAJOR_KEY_SIGNATURES, CHORD_DIATONIC_STEPS, NOTE_TO_INDEX, SCALES, PREFERRED_ROOT_NAMES_MAJOR, CHORD_COLORS, PREFERRED_ROOT_NAMES_MINOR } from '../constants';
+import { ROOT_NOTES, CHORD_INTERVALS, MAJOR_KEY_SIGNATURES, CHORD_DIATONIC_STEPS, NOTE_TO_INDEX, SCALES, PREFERRED_ROOT_NAMES_MAJOR, CHORD_COLORS, PREFERRED_ROOT_NAMES_MINOR, SHARP_CHORD_ROOTS, FLAT_CHORD_ROOTS } from '../constants';
 import ScaleNotation from './ScaleNotation';
 import FingerboardControls from './FingerboardControls';
 
@@ -100,6 +100,12 @@ const ChordManager: React.FC<ChordManagerProps> = ({
     if (index === undefined) return chordRoot;
     const newIndex = (index + transpose + 24) % 12;
     return PREFERRED_ROOT_NAMES_MAJOR[newIndex];
+  };
+
+  const adjustChordRoot = (root: string) => {
+    const idx = NOTE_TO_INDEX[root];
+    if (idx === undefined) return root;
+    return (keySignatureCount < 0 ? FLAT_CHORD_ROOTS : SHARP_CHORD_ROOTS)[idx];
   };
 
   const updateCurrentList = (updatedChords: Chord[]) => {
@@ -735,18 +741,18 @@ const ChordManager: React.FC<ChordManagerProps> = ({
                       <div className={`${isDragged ? 'cursor-grabbing' : 'cursor-grab'} text-slate-500 hover:text-slate-300`}>
                         <GripVertical size={16} />
                       </div>
-                      <div className="font-bold text-slate-100 text-lg flex items-baseline gap-1">
-                         {transpose === 0 ? (
-                           <>{chord.root}</>
-                         ) : (
-                           <span className="flex items-center gap-1">
-                             <span className="text-slate-400">{chord.root} {chord.type}</span>
-                             <ArrowRight size={14} className="text-slate-500" />
-                             <span>{transposedRoot} {chord.type}</span>
-                           </span>
-                         )}
-                         {transpose === 0 && <span className="text-sm font-medium text-slate-400">{chord.type}</span>}
-                      </div>
+                       <div className="font-bold text-slate-100 text-lg flex items-baseline gap-1">
+                          {transpose === 0 ? (
+                            <>{adjustChordRoot(chord.root)}</>
+                          ) : (
+                            <span className="flex items-center gap-1">
+                              <span className="text-slate-400">{adjustChordRoot(chord.root)} {chord.type}</span>
+                              <ArrowRight size={14} className="text-slate-500" />
+                              <span>{adjustChordRoot(transposedRoot)} {chord.type}</span>
+                            </span>
+                          )}
+                          {transpose === 0 && <span className="text-sm font-medium text-slate-400">{chord.type}</span>}
+                       </div>
                    </div>
                    <div className="flex items-center gap-3">
                       {bestKeyInfo && (
@@ -762,14 +768,14 @@ const ChordManager: React.FC<ChordManagerProps> = ({
                 <div className="bg-[#fdf6e3] h-[120px] overflow-hidden relative">
                    <div className="absolute inset-0 flex items-center justify-center origin-center mt-[-5px]">
                      <ScaleNotation 
-                        rootName={transposedRoot} 
+                         rootName={adjustChordRoot(transposedRoot)} 
                         intervals={CHORD_INTERVALS[chord.type]} 
                         diatonicSteps={CHORD_DIATONIC_STEPS[chord.type]}
                         keySignatureCount={keySignatureCount}
                         modeLabel=""
-                        highlightNoteName={currentKeyRoot}
                         hideBackground={true}
-                        hideRootHighlight={true}
+                        hideRootHighlight={false}
+                        arpeggio={true}
                         keyRootName={currentKeyRoot}
                         keyIntervals={currentKeyIntervals}
                      />
