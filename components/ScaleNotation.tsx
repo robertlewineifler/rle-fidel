@@ -169,7 +169,7 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
   const ARPEGGIO_FIRST_NOTE_GAP = 5;
   const ARPEGGIO_VIEWBOX_W = 800;
   const SCALE_VIEWBOX_W = 800;
-  const ARPEGGIO_LEFT_PAD = 0;
+  const ARPEGGIO_LEFT_PAD = 8;
 
   const STAFF_X_START = arpeggio
     ? 80 + keySigCount * KEY_SIG_SPACING + ARPEGGIO_FIRST_NOTE_GAP
@@ -228,8 +228,8 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
   const viewBoxBottom = arpeggio
     ? Math.max(getY(minVisualStep) + 25, labelY2 + 10)
     : getY(minVisualStep) + 25;
-  const viewBoxHeight = arpeggio ? (viewBoxBottom - viewBoxTop + 20) : 150;
-  const viewBoxY = arpeggio ? (viewBoxTop - 10) : 0;
+  const viewBoxHeight = arpeggio ? 160 : 150;
+  const viewBoxY = arpeggio ? -20 : 0;
 
   const formatModeLabel = () => {
     if (!modeLabel) return [];
