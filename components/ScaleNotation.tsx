@@ -49,10 +49,21 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
     if (diatonicSteps && intervalIdx >= 0) { stepOffset = diatonicSteps[intervalIdx]; }
     else { stepOffset = intervalIdx; }
     const currentDiatonicRaw = rootDiatonic + stepOffset + octaveOffset * 7;
-    const currentDiatonic = ((currentDiatonicRaw % 7) + 7) % 7;
-    const octaveShift = Math.floor(currentDiatonicRaw / 7);
-    const accidentalVal = abs - (DIATONIC_OFFSETS[currentDiatonic] + octaveShift * 12);
-    const visualStep = currentDiatonic + octaveShift * 7;
+    let currentDiatonic = ((currentDiatonicRaw % 7) + 7) % 7;
+    let octaveShift = Math.floor(currentDiatonicRaw / 7);
+    let accidentalVal = abs - (DIATONIC_OFFSETS[currentDiatonic] + octaveShift * 12);
+    let visualStep = currentDiatonic + octaveShift * 7;
+
+    if (keySignatureCount !== 0) {
+      const name = keySignatureCount < 0
+        ? ['C', 'Des', 'D', 'Es', 'E', 'F', 'Ges', 'G', 'As', 'A', 'B', 'H']
+        : ['C', 'Cis', 'D', 'Dis', 'E', 'F', 'Fis', 'G', 'Gis', 'A', 'Ais', 'H'];
+      const parsed = parseRoot(name[(abs + 120) % 12]);
+      const oct = Math.round((abs - parsed.accidental - DIATONIC_OFFSETS[parsed.diatonicIndex]) / 12);
+      visualStep = parsed.diatonicIndex + oct * 7;
+      accidentalVal = parsed.accidental;
+    }
+
     const frequency = FREQ_C4 * Math.pow(2, abs / 12);
     const isRoot = typeof isRootForScale === 'function' ? isRootForScale(idx) : (relSemitone === 0);
     return {
@@ -84,7 +95,7 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
     for (let i = sorted.length - 2; i >= 0; i--) pattern.push(sorted[i]);
     for (let i = 1; i <= rootIdx; i++) pattern.push(sorted[i]);
     return pattern.map((abs, idx) => noteToObject(abs, idx, false));
-  }, [arpeggio, rootSemitone, intervals, diatonicSteps]);
+  }, [arpeggio, rootSemitone, rootDiatonic, rootAccidental, intervals, diatonicSteps, keySignatureCount]);
 
   // --- Scale notes ---
   const scaleNotes = useMemo(() => {
@@ -97,7 +108,7 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
       result.push(noteToObject(abs, i, (j: number) => j === 0 || j === fullIntervals.length - 1));
     }
     return result;
-  }, [arpeggio, rootSemitone, intervals, diatonicSteps]);
+  }, [arpeggio, rootSemitone, rootDiatonic, rootAccidental, intervals, diatonicSteps, keySignatureCount]);
 
   const notes = arpeggio ? arpeggioNotes : scaleNotes;
 
