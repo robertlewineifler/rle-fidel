@@ -236,7 +236,7 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
         {isNoteActiveFreq && <circle cx={x} cy={y} r={NOTE_RADIUS * 3} fill="orange" opacity="0.3" filter="blur(4px)" />}
         {ledgers.map(ls => <line key={ls} x1={x - 12} y1={getY(ls)} x2={x + 12} y2={getY(ls)} stroke={isNoteActiveFreq || isHighlightNote ? "#d97706" : "#666"} strokeWidth="1" />)}
         {note.accidental !== 0 && (
-          <text x={x - 14} y={y - 1} fontSize="26" fill={sc} textAnchor="middle" fontFamily="Arial, sans-serif" dominantBaseline="central">
+          <text x={x - 14} y={note.accidental > 0 ? y - 1 : y - 5} fontSize="26" fill={sc} textAnchor="middle" fontFamily="Arial, sans-serif" dominantBaseline="central">
             {note.accidental > 0 ? '♯' : note.accidental < 0 ? '♭' : '♮'}
           </text>
         )}
@@ -260,7 +260,7 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
             ))}
             <text x={15 + ARPEGGIO_LEFT_PAD} y={getY(8)} fontSize="65" fontFamily="Times New Roman, serif" fill="#000" textAnchor="middle" dominantBaseline="central">𝄞</text>
             {Array.from({ length: keySigCount }).map((_, i) => (
-              <text key={`ks-${i}`} x={40 + ARPEGGIO_LEFT_PAD + i * KEY_SIG_SPACING} y={(isSharpKey ? sharpY[i] : flatY[i]) - 1} fontSize="26" fill="#000" fontFamily="Arial, sans-serif" dominantBaseline="central" textAnchor="middle">
+              <text key={`ks-${i}`} x={40 + ARPEGGIO_LEFT_PAD + i * KEY_SIG_SPACING} y={isSharpKey ? sharpY[i] - 1 : flatY[i] - 5} fontSize="26" fill="#000" fontFamily="Arial, sans-serif" dominantBaseline="central" textAnchor="middle">
                 {isSharpKey ? '♯' : '♭'}
               </text>
             ))}
@@ -280,7 +280,7 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
             ))}
           </g>
           {Array.from({ length: keySigCount }).map((_, i) => (
-            <text key={`ks-${i}`} x={40 + i * KEY_SIG_SPACING} y={(isSharpKey ? sharpY[i] : flatY[i]) - 1} fontSize="26" fill="#000" fontFamily="Arial, sans-serif" dominantBaseline="central" textAnchor="middle">
+            <text key={`ks-${i}`} x={40 + i * KEY_SIG_SPACING} y={isSharpKey ? sharpY[i] - 1 : flatY[i] - 5} fontSize="26" fill="#000" fontFamily="Arial, sans-serif" dominantBaseline="central" textAnchor="middle">
               {isSharpKey ? '♯' : '♭'}
             </text>
           ))}
