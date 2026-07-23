@@ -127,12 +127,12 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
   // Arpeggio parameters
   const ARPEGGIO_NOTE_SPACING = 35;
   const ARPEGGIO_ROOT_GAP = 25;
-  const ARPEGGIO_FIRST_NOTE_GAP = 35;
+  const ARPEGGIO_FIRST_NOTE_GAP = 0;
   const ARPEGGIO_VIEWBOX_W = 800;
   const ARPEGGIO_LEFT_PAD = 8;
   const ARP_SCALE = 0.9;
   const ARP_X = 3;
-  const ARP_Y = 5;
+  const ARP_Y = 3;
 
   // Scale parameters
   const SCALE_VIEWBOX_W = 800;
@@ -223,7 +223,7 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
     return (
       <g key={note.id}>
         {isNoteActiveFreq && <circle cx={x} cy={y} r={NOTE_RADIUS * 3} fill="orange" opacity="0.3" filter="blur(4px)" />}
-        {ledgers.map(ls => <line key={ls} x1={x - 10} y1={getY(ls)} x2={x + 10} y2={getY(ls)} stroke={isNoteActiveFreq || isHighlightNote ? "#d97706" : "#000"} strokeWidth="1" />)}
+        {ledgers.map(ls => <line key={ls} x1={x - 12} y1={getY(ls)} x2={x + 12} y2={getY(ls)} stroke={isNoteActiveFreq || isHighlightNote ? "#d97706" : "#666"} strokeWidth="1" />)}
         {note.accidental !== 0 && (
           <text x={x - 14} y={y - 1} fontSize="26" fill={sc} textAnchor="middle" fontFamily="Arial, sans-serif" dominantBaseline="central">
             {note.accidental > 0 ? '♯' : note.accidental < 0 ? '♭' : '♮'}
@@ -231,8 +231,10 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
         )}
         <ellipse cx={x} cy={y} rx={NOTE_RADIUS + 1} ry={NOTE_RADIUS} fill={headFill} stroke={sc} strokeWidth={isNoteActiveFreq || isHighlightNote ? 1 : 0} transform={`rotate(-15 ${x} ${y})`} />
         <line x1={stemUp ? x + NOTE_RADIUS : x - NOTE_RADIUS} y1={y} x2={stemUp ? x + NOTE_RADIUS : x - NOTE_RADIUS} y2={stemUp ? y - stemHeight : y + stemHeight} stroke={sc} strokeWidth="1.5" />
+        {note.visualStep > 0 && (
         <text x={x} y={labelY1} fontSize={arpeggio ? 14 : 16} fill="#888" textAnchor="middle" fontFamily="sans-serif">{getNoteName(note.absSemitone)}</text>
-        <text x={x} y={labelY2} fontSize={arpeggio ? 12 : 14} fill="#666" textAnchor="middle" className="font-mono font-bold">{dispDist !== undefined ? dispDist : 'X'}</text>
+        )}
+        <text x={x} y={labelY2} fontSize={arpeggio ? 12 : 14} fill="#888" textAnchor="middle" className="font-mono font-bold">{dispDist !== undefined ? dispDist : 'X'}</text>
       </g>
     );
   });
