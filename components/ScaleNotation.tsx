@@ -165,12 +165,16 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
     if (!arpeggio) return [] as number[];
     const rootIndices: number[] = [];
     for (let i = 0; i < notes.length; i++) { if (notes[i].isRoot) rootIndices.push(i); }
+    const highestNoteAbs = Math.max(...notes.map(n => n.absSemitone));
     const gapBefore = new Set<number>();
     const gapAfter = new Set<number>();
     for (let k = 0; k < rootIndices.length - 1; k++) {
       const r2 = rootIndices[k + 1];
       const prev = notes[r2 - 1];
-      if (prev.absSemitone < notes[r2].absSemitone) { gapBefore.add(r2); }
+      if (prev.absSemitone < notes[r2].absSemitone) {
+        gapBefore.add(r2);
+        if (notes[r2].absSemitone === highestNoteAbs) gapAfter.add(r2);
+      }
       else { gapAfter.add(r2); }
     }
     const xs: number[] = [];

@@ -81,13 +81,11 @@ const FingerboardDisplay: React.FC<FingerboardDisplayProps> = ({
     const originalIndex = NOTE_TO_INDEX[root];
     const effectiveIndex = (originalIndex + transpose + 24) % 12;
     
-    // Select name based on Mode to handle enharmonics (e.g. As vs Gis)
     const name = isMajor 
         ? PREFERRED_ROOT_NAMES_MAJOR[effectiveIndex]
         : PREFERRED_ROOT_NAMES_MINOR[effectiveIndex];
         
-    // Capitalize for internal logic compatibility, display logic handles lowercase
-    return name.charAt(0).toUpperCase() + name.slice(1);
+    return isMajor ? name.charAt(0).toUpperCase() + name.slice(1) : name;
   }, [root, transpose, isMajor]);
 
   // Determine Effective Key Signature for Display
