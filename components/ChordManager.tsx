@@ -18,6 +18,7 @@ interface ChordManagerProps {
   originalRoot: string;
   originalIsMajor: boolean;
   originalMinorVariant: string;
+  referencePitch?: number;
 }
 
 const CHORD_TYPES = Object.keys(CHORD_INTERVALS);
@@ -50,7 +51,8 @@ const ChordManager: React.FC<ChordManagerProps> = ({
   transpose,
   originalRoot,
   originalIsMajor,
-  originalMinorVariant
+  originalMinorVariant,
+  referencePitch = 440
 }) => {
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [selectedRoot, setSelectedRoot] = useState('C');
@@ -768,17 +770,18 @@ const ChordManager: React.FC<ChordManagerProps> = ({
                 <div className="bg-[#fdf6e3] h-[120px] overflow-hidden relative">
                    <div className="absolute inset-0 flex items-center justify-center origin-center mt-[-5px]">
                      <ScaleNotation 
-                         rootName={adjustChordRoot(transposedRoot)} 
-                        intervals={CHORD_INTERVALS[chord.type]} 
-                        diatonicSteps={CHORD_DIATONIC_STEPS[chord.type]}
-                        keySignatureCount={keySignatureCount}
-                        modeLabel=""
-                        hideBackground={true}
-                        hideRootHighlight={false}
-                        arpeggio={true}
-                        keyRootName={currentKeyRoot}
-                        keyIntervals={currentKeyIntervals}
-                     />
+                          rootName={adjustChordRoot(transposedRoot)} 
+                         intervals={CHORD_INTERVALS[chord.type]} 
+                         diatonicSteps={CHORD_DIATONIC_STEPS[chord.type]}
+                         keySignatureCount={keySignatureCount}
+                         modeLabel=""
+                         hideBackground={true}
+                         hideRootHighlight={false}
+                         arpeggio={true}
+                         keyRootName={currentKeyRoot}
+                         keyIntervals={currentKeyIntervals}
+                         referencePitch={referencePitch}
+                      />
                    </div>
                 </div>
               </div>

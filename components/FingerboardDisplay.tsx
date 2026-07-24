@@ -27,6 +27,7 @@ interface FingerboardDisplayProps {
   currentFrequency: number;
   isSilent: boolean;
   audioService: AudioService;
+  referencePitch: number;
   
   // Controlled State
   root: string;
@@ -46,6 +47,7 @@ const FingerboardDisplay: React.FC<FingerboardDisplayProps> = ({
   currentFrequency, 
   isSilent, 
   audioService,
+  referencePitch = 440,
   root,
   isMajor,
   minorVariant,
@@ -69,9 +71,9 @@ const FingerboardDisplay: React.FC<FingerboardDisplayProps> = ({
   const strings = useMemo(() => {
     return VIOLIN_SCALE.map(s => ({
       ...s,
-      baseFreq: 440 * Math.pow(2, s.semitones / 12)
+      baseFreq: referencePitch * Math.pow(2, s.semitones / 12)
     }));
-  }, []);
+  }, [referencePitch]);
 
   const currentMode = isMajor ? 'Dur' : minorVariant;
   const currentIntervals = useMemo(() => SCALES[currentMode] || SCALES['Dur'], [currentMode]);
@@ -185,7 +187,7 @@ const FingerboardDisplay: React.FC<FingerboardDisplayProps> = ({
         
         // Match visual notation logic: Center around Octave 4.
         const octaveShift = rootIndex < 3 ? 12 : 0;
-        const baseFreq = 220 * Math.pow(2, (rootIndex + octaveShift) / 12);
+        const baseFreq = (referencePitch / 2) * Math.pow(2, (rootIndex + octaveShift) / 12);
         
         const fullScaleIntervals = [...currentIntervals, 12]; // Add octave
 
@@ -441,6 +443,7 @@ const FingerboardDisplay: React.FC<FingerboardDisplayProps> = ({
                     rootIndex={NOTE_TO_INDEX[effectiveRootName]} 
                     audioService={audioService}
                     scaleIntervals={currentIntervals}
+                    referencePitch={referencePitch}
                     activeFreq={activeHighlightFreq}
                     onPlayStart={handlePianoStart}
                     onPlayStop={handlePianoStop}
@@ -453,6 +456,7 @@ const FingerboardDisplay: React.FC<FingerboardDisplayProps> = ({
                 keySignatureCount={effectiveAccidentals}
                 activeFreq={activeHighlightFreq}
                 modeLabel={currentMode}
+                referencePitch={referencePitch}
             />
         </div>
 

@@ -7,6 +7,7 @@ interface PianoKeyboardProps {
   rootIndex: number; // Pitch class index of the root (0-11)
   scaleIntervals: number[]; // Intervals of the scale
   audioService: AudioService;
+  referencePitch?: number;
   activeFreq: number | null; // Frequency currently being played elsewhere (e.g. Fingerboard or Mic)
   onPlayStart: (freq: number) => void; 
   onPlayStop: () => void;
@@ -28,6 +29,7 @@ const PianoKeyboard: React.FC<PianoKeyboardProps> = ({
   rootIndex, 
   audioService,
   scaleIntervals,
+  referencePitch = 440,
   activeFreq,
   onPlayStart,
   onPlayStop
@@ -47,7 +49,7 @@ const PianoKeyboard: React.FC<PianoKeyboardProps> = ({
       // Calculate Pitch Class (0-11, 0=A)
       const pitchIndex = ((semitone % 12) + 12) % 12;
       const type = KEY_TYPES[pitchIndex];
-      const freq = 440 * Math.pow(2, semitone / 12);
+      const freq = referencePitch * Math.pow(2, semitone / 12);
       
       let position = 0;
       
@@ -67,7 +69,7 @@ const PianoKeyboard: React.FC<PianoKeyboardProps> = ({
       });
     }
     return { keys: keysData, whiteKeyCount: whiteCounter };
-  }, []);
+  }, [referencePitch]);
 
   // 2. Calculate Frequencies for 1-8 Hotkeys
   // MUST MATCH Scale Playback Logic in FingerboardDisplay:
@@ -79,7 +81,7 @@ const PianoKeyboard: React.FC<PianoKeyboardProps> = ({
     // Roots C(3) to G(11) stay in the standard range (C4..G4)
     // Base reference is 220Hz (A3).
     const octaveShift = rootIndex < 3 ? 12 : 0;
-    const baseFreq = 220 * Math.pow(2, (rootIndex + octaveShift) / 12);
+    const baseFreq = (referencePitch / 2) * Math.pow(2, (rootIndex + octaveShift) / 12);
 
     const map: { [key: string]: number } = {};
     
@@ -95,7 +97,7 @@ const PianoKeyboard: React.FC<PianoKeyboardProps> = ({
     });
 
     return map;
-  }, [rootIndex, scaleIntervals]);
+  }, [rootIndex, scaleIntervals, referencePitch]);
 
   // 3. Interactions (Polyphonic)
   const startPlaying = (freq: number) => {

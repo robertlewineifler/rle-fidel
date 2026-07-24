@@ -14,17 +14,17 @@ interface ScaleNotationProps {
   keyRootName?: string;
   keyIntervals?: number[];
   arpeggio?: boolean;
+  referencePitch?: number;
 }
 
 const DIATONIC_OFFSETS = [0, 2, 4, 5, 7, 9, 11];
-const FREQ_C4 = 440 * Math.pow(2, -9/12);
 const VIOLIN_MIN_ABS = -5;
 const VIOLIN_MAX_ABS = 23;
 
 const ScaleNotation: React.FC<ScaleNotationProps> = ({ 
    rootName, intervals, diatonicSteps, keySignatureCount, activeFreq,
    modeLabel = "", highlightNoteName, hideBackground, hideRootHighlight,
-   keyRootName, keyIntervals, arpeggio = false
+   keyRootName, keyIntervals, arpeggio = false, referencePitch = 440
 }) => {
    
   const parseRoot = (name: string) => {
@@ -64,7 +64,7 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
       accidentalVal = parsed.accidental;
     }
 
-    const frequency = FREQ_C4 * Math.pow(2, abs / 12);
+    const frequency = referencePitch * Math.pow(2, (abs - 9) / 12);
     const isRoot = typeof isRootForScale === 'function' ? isRootForScale(idx) : (relSemitone === 0);
     return {
       id: idx, visualStep, accidental: accidentalVal, isRoot, frequency,

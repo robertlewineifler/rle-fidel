@@ -510,6 +510,7 @@ const App: React.FC = () => {
                         currentFrequency={tunerStatus.frequency}
                         isSilent={tunerStatus.isSilent}
                         audioService={audioService}
+                        referencePitch={referencePitch}
                         root={fbRoot}
                         isMajor={fbIsMajor}
                         minorVariant={fbMinorVariant}
@@ -589,10 +590,10 @@ const App: React.FC = () => {
                                     Tuner
                                   </span>
                                   
-                                  <div className="flex items-center gap-1 bg-slate-800 rounded px-1 py-0.5 border border-slate-700">
-                                    <button onClick={() => changePitch(-1)} className="p-1 hover:text-white text-slate-400 transition-colors"><Minus size={10} /></button>
-                                    <span className="text-[10px] font-mono font-bold text-amber-500 w-8 text-center">{referencePitch}</span>
-                                    <button onClick={() => changePitch(1)} className="p-1 hover:text-white text-slate-400 transition-colors"><Plus size={10} /></button>
+                                  <div className="flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-1.5 border border-slate-700">
+                                    <button onClick={() => changePitch(-1)} className="p-1 hover:text-white text-slate-400 transition-colors"><Minus size={16} /></button>
+                                    <span className="text-base font-mono font-bold text-amber-500 w-10 text-center">{referencePitch}</span>
+                                    <button onClick={() => changePitch(1)} className="p-1 hover:text-white text-slate-400 transition-colors"><Plus size={16} /></button>
                                   </div>
                                 </div>
 
@@ -611,14 +612,14 @@ const App: React.FC = () => {
                                             key={str.name}
                                             onClick={() => playString(str.name, str.frequency)}
                                             className={`
-                                            flex flex-col items-center justify-center py-2 rounded-lg border transition-all active:scale-95
+                                            flex flex-col items-center justify-center py-3 rounded-lg border transition-all active:scale-95
                                             ${isActive 
                                                 ? 'bg-amber-600 border-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.3)]' 
                                                 : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
                                             }
                                             `}
                                         >
-                                            <span className="text-sm font-bold">{str.name}</span>
+                                            <span className="text-lg font-bold">{str.name}</span>
                                         </button>
                                         );
                                     })}
@@ -689,6 +690,7 @@ const App: React.FC = () => {
                                 originalRoot={fbRoot}
                                 originalIsMajor={fbIsMajor}
                                 originalMinorVariant={fbMinorVariant}
+                                referencePitch={referencePitch}
                             />
                         </div>
                     )}

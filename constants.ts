@@ -131,7 +131,7 @@ export const CHORD_DIATONIC_STEPS: { [key: string]: number[] } = {
 };
 
 export const AUDIO_CONTEXT_CONFIG = {
-  fftSize: 2048,
+  fftSize: 1024,
   smoothingTimeConstant: 0.8,
 };
 
