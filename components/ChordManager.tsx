@@ -110,6 +110,83 @@ const ChordManager: React.FC<ChordManagerProps> = ({
     return (keySignatureCount < 0 ? FLAT_CHORD_ROOTS : SHARP_CHORD_ROOTS)[idx];
   };
 
+  const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+  const ROMAN_SUFFIX_MAP: Record<string, string> = {
+    'Dur': '', 'Moll': '', '7': '7', 'maj7': 'maj7',
+    'm7': 'm7', 'm7b5': 'm7b5', 'dim': 'dim', 'aug': 'aug',
+    'sus4': 'sus4', 'sus2': 'sus2'
+  };
+
+  const getIsUpperForChordType = (chordType: string, degreeIndex: number, keyIntervals: number[]): boolean => {
+    switch (chordType) {
+      case 'Dur':
+      case '7':
+      case 'maj7':
+      case 'aug':
+        return true;
+      case 'Moll':
+      case 'm7':
+      case 'm7b5':
+      case 'dim':
+        return false;
+      case 'sus4':
+      case 'sus2': {
+        const rootInt = keyIntervals[degreeIndex];
+        const thirdInt = keyIntervals[(degreeIndex + 2) % 7] + ((degreeIndex + 2) >= 7 ? 12 : 0);
+        return (thirdInt - rootInt) === 4;
+      }
+      default:
+        return true;
+    }
+  };
+
+  const getRomanNumeral = (chordRoot: string, chordType: string, keyRoot: string, keyMode: string): string | null => {
+    const chordIdx = NOTE_TO_INDEX[chordRoot];
+    const keyIdx = NOTE_TO_INDEX[keyRoot];
+    if (chordIdx === undefined || keyIdx === undefined) return null;
+
+    const keyIntervals = SCALES[keyMode];
+    if (!keyIntervals) return null;
+
+    const semitonesFromTonic = ((chordIdx - keyIdx) % 12 + 12) % 12;
+    const degreeIndex = keyIntervals.indexOf(semitonesFromTonic);
+
+    if (degreeIndex === -1) return null;
+
+    let roman = ROMAN_NUMERALS[degreeIndex];
+    const isUpper = getIsUpperForChordType(chordType, degreeIndex, keyIntervals);
+
+    if (!isUpper) roman = roman.toLowerCase();
+
+    return roman + (ROMAN_SUFFIX_MAP[chordType] || '');
+  };
+
+  const formatKeyRoot = (root: string, mode: string): string => {
+    return mode.startsWith('Moll') ? root.toLowerCase() : root;
+  };
+
+  const formatChordRoot = (root: string, chordType: string, keyRoot: string, keyMode: string): string => {
+    const adjusted = adjustChordRoot(root);
+    const chordIdx = NOTE_TO_INDEX[root];
+    const keyIdx = NOTE_TO_INDEX[keyRoot];
+    if (chordIdx === undefined || keyIdx === undefined) return adjusted;
+
+    const keyIntervals = SCALES[keyMode];
+    if (!keyIntervals) return adjusted;
+
+    const semitonesFromTonic = ((chordIdx - keyIdx) % 12 + 12) % 12;
+    const degreeIndex = keyIntervals.indexOf(semitonesFromTonic);
+
+    let isUpper: boolean;
+    if (degreeIndex === -1) {
+      isUpper = !['Moll', 'm7', 'm7b5', 'dim'].includes(chordType);
+    } else {
+      isUpper = getIsUpperForChordType(chordType, degreeIndex, keyIntervals);
+    }
+
+    return isUpper ? adjusted : adjusted.toLowerCase();
+  };
+
   const updateCurrentList = (updatedChords: Chord[]) => {
     const newLists = chordLists.map(list => 
       list.id === activeListId ? { ...list, chords: updatedChords } : list
@@ -558,7 +635,7 @@ const ChordManager: React.FC<ChordManagerProps> = ({
                 <div>
                   <div className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 ${hasOriginalKey ? 'text-slate-500' : 'text-amber-400'}`}>Erkannte Tonart</div>
                   <span className={`text-sm font-bold ${hasOriginalKey ? 'text-slate-500' : 'text-amber-400'}`}>
-                    {bestKeyInfo.key.root} {bestKeyInfo.key.mode} <span className="text-xs font-normal opacity-70 ml-0.5">({bestKeyInfo.matchPercent}%)</span>
+                    {formatKeyRoot(bestKeyInfo.key.root, bestKeyInfo.key.mode)} {bestKeyInfo.key.mode} <span className="text-xs font-normal opacity-70 ml-0.5">({bestKeyInfo.matchPercent}%)</span>
                   </span>
                 </div>
                 <div className="flex items-start gap-1">
@@ -573,7 +650,7 @@ const ChordManager: React.FC<ChordManagerProps> = ({
                     </div>
                     {hasOriginalKey && effectiveKeyInfo ? (
                       <span className="text-sm font-bold text-emerald-400">
-                        {effectiveKeyInfo.key.root} {effectiveKeyInfo.key.mode} <span className="text-xs font-normal text-emerald-500/70 ml-0.5">({effectiveKeyInfo.matchPercent}%)</span>
+                        {formatKeyRoot(effectiveKeyInfo.key.root, effectiveKeyInfo.key.mode)} {effectiveKeyInfo.key.mode} <span className="text-xs font-normal text-emerald-500/70 ml-0.5">({effectiveKeyInfo.matchPercent}%)</span>
                       </span>
                     ) : (
                       <span className="text-sm text-slate-600">—</span>
@@ -622,7 +699,7 @@ const ChordManager: React.FC<ChordManagerProps> = ({
                 </div>
                 {hasOriginalKey && effectiveKeyInfo ? (
                   <span className="text-sm font-bold text-emerald-400">
-                    {effectiveKeyInfo.key.root} {effectiveKeyInfo.key.mode}
+                    {formatKeyRoot(effectiveKeyInfo.key.root, effectiveKeyInfo.key.mode)} {effectiveKeyInfo.key.mode}
                   </span>
                 ) : (
                   <span className="text-sm text-slate-600">—</span>
@@ -719,6 +796,9 @@ const ChordManager: React.FC<ChordManagerProps> = ({
         {chords.map((chord, idx) => {
           const matchPercent = calculateChordMatch(chord);
           const transposedRoot = getTransposedChordRoot(chord.root);
+          const romanNumeral = getRomanNumeral(chord.root, chord.type, originalRoot, fbMode);
+          const formattedRoot = formatChordRoot(chord.root, chord.type, originalRoot, fbMode);
+          const formattedTransposedRoot = formatChordRoot(transposedRoot, chord.type, currentKeyRoot, fbMode);
           const isDragged = draggedIdx === idx;
           const isDropTarget = dropTargetIdx === idx && draggedIdx !== null && draggedIdx !== idx;
           const gapAbove = isDropTarget && draggedIdx !== null && draggedIdx > idx;
@@ -744,13 +824,16 @@ const ChordManager: React.FC<ChordManagerProps> = ({
                         <GripVertical size={16} />
                       </div>
                        <div className="font-bold text-slate-100 text-lg flex items-baseline gap-1">
+                          {romanNumeral && (
+                            <span className={`font-mono text-base mr-0.5 ${showGriffbrettInfo ? 'text-red-400' : 'text-amber-400/80'}`}>{romanNumeral}</span>
+                          )}
                           {transpose === 0 ? (
-                            <>{adjustChordRoot(chord.root)}</>
+                            <>{formattedRoot}</>
                           ) : (
                             <span className="flex items-center gap-1">
-                              <span className="text-slate-400">{adjustChordRoot(chord.root)} {chord.type}</span>
+                              <span className="text-slate-400">{formattedRoot} {chord.type}</span>
                               <ArrowRight size={14} className="text-slate-500" />
-                              <span>{adjustChordRoot(transposedRoot)} {chord.type}</span>
+                              <span>{formattedTransposedRoot} {chord.type}</span>
                             </span>
                           )}
                           {transpose === 0 && <span className="text-sm font-medium text-slate-400">{chord.type}</span>}

@@ -14,8 +14,8 @@ import AudioMeter from './components/AudioMeter';
 
 const audioService = new AudioService();
 
-// Erhöht auf 0.8 für viel schnellere Reaktion (Latenz minimieren)
-const SMOOTHING_FACTOR = 0.8; 
+// Erhöhte Glättung für weichere, zitterfreie Nadelbewegung
+const SMOOTHING_FACTOR = 0.5; 
 
 const INTERNAL_WIDTH = 1600;
 
