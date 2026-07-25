@@ -17,7 +17,7 @@ interface FingerboardControlsProps {
   compact?: boolean;
 }
 
-const ROOT_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+const ROOT_INDICES = [3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2];
 
 const FingerboardControls: React.FC<FingerboardControlsProps> = ({
   root,
@@ -34,6 +34,7 @@ const FingerboardControls: React.FC<FingerboardControlsProps> = ({
   compact = false
 }) => {
   const currentRootIndex = NOTE_TO_INDEX[root];
+  const transposedRootIndex = (currentRootIndex + transpose + 24) % 12;
 
   return (
     <div className={`w-full flex flex-col gap-[2px] ${compact ? '' : 'bg-slate-900/80 rounded-2xl border border-slate-800 p-3 shadow-xl shrink-0'}`}>
@@ -43,26 +44,32 @@ const FingerboardControls: React.FC<FingerboardControlsProps> = ({
           const relMinorRoot = getRelativeMinorLabel(currentMajorRoot);
 
           const isMajorActive = isMajor && root === currentMajorRoot;
+          const isTransposedMajorTarget = transpose !== 0 && !isMajorActive && idx === transposedRootIndex;
           const isMinorActive = !isMajor && root.toLowerCase() === relMinorRoot.toLowerCase();
+          const isTransposedMinorTarget = transpose !== 0 && !isMinorActive && (NOTE_TO_INDEX[relMinorRoot] ?? -1) === transposedRootIndex;
           
           return (
             <div key={idx} className="flex flex-col min-w-0">
               <button
-                onClick={() => { onRootChange(currentMajorRoot); onModeChange(true); onTransposeChange(0); }}
-                className={`h-8 w-full rounded-t-sm text-[10px] font-bold transition-all border-x border-t flex items-center justify-center p-0
+                onClick={() => { onRootChange(currentMajorRoot); onModeChange(true); onTransposeChange(0); onVariantChange('Moll (Natürlich)'); }}
+                className={`h-9 w-full rounded-t-sm text-base font-bold transition-all border-x border-t flex items-center justify-center p-0
                   ${isMajorActive
-                    ? 'bg-amber-500 text-slate-900 border-amber-400 z-10' 
-                    : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'
+                    ? `bg-amber-500 text-slate-900 ${transpose !== 0 ? 'border-slate-700' : 'border-amber-400'} z-10` 
+                    : (isTransposedMajorTarget && isMajor)
+                      ? 'bg-slate-800 text-slate-400 border-2 border-amber-400 hover:bg-slate-700 hover:text-slate-200'
+                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'
                   }`}
               >
                 {formatNoteLabel(currentMajorRoot, false)}
               </button>
               <button
                 onClick={() => { onRootChange(relMinorRoot.charAt(0).toUpperCase() + relMinorRoot.slice(1)); onModeChange(false); onTransposeChange(0); }}
-                className={`h-8 w-full rounded-b-sm text-[10px] transition-all border-x border-b flex items-center justify-center p-0
+                className={`h-9 w-full rounded-b-sm text-base transition-all border-x border-b flex items-center justify-center p-0
                   ${isMinorActive
-                    ? 'bg-indigo-500 text-white border-indigo-400 z-10 font-bold' 
-                    : 'bg-slate-800/50 text-slate-500 border-slate-700/50 hover:bg-slate-700 hover:text-slate-300'
+                    ? `bg-indigo-500 text-white ${transpose !== 0 ? 'border-slate-700' : 'border-indigo-400'} z-10 font-bold` 
+                    : (isTransposedMinorTarget && !isMajor)
+                      ? 'bg-slate-800/50 text-slate-400 border-2 border-indigo-400 hover:bg-slate-700 hover:text-slate-200'
+                      : 'bg-slate-800/50 text-slate-400 border-slate-700/50 hover:bg-slate-700 hover:text-slate-200'
                   }`}
               >
                 {formatNoteLabel(relMinorRoot, true)}
@@ -72,7 +79,7 @@ const FingerboardControls: React.FC<FingerboardControlsProps> = ({
         })}
       </div>
 
-      <div className="w-full mt-1">
+      <div className="w-full">
         <div className={`grid grid-cols-3 gap-[1px] transition-opacity duration-300 ${isMajor ? 'opacity-40 pointer-events-none grayscale' : 'opacity-100'}`}>
           {['Natürlich', 'Harmonisch', 'Melodisch'].map((variantShort) => {
             const fullVariant = `Moll (${variantShort})`;
@@ -82,7 +89,7 @@ const FingerboardControls: React.FC<FingerboardControlsProps> = ({
                 key={variantShort}
                 onClick={() => onVariantChange(fullVariant)}
                 disabled={isMajor}
-                className={`h-6 flex items-center justify-center text-[9px] font-medium transition-all border first:rounded-l last:rounded-r
+                className={`h-7 flex items-center justify-center text-sm font-medium transition-all border first:rounded-l last:rounded-r
                   ${isActive 
                     ? 'bg-indigo-500 text-white border-indigo-400 z-10 shadow-sm' 
                     : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-slate-200'
@@ -127,7 +134,7 @@ const FingerboardControls: React.FC<FingerboardControlsProps> = ({
                 onClick={() => onTransposeChange(offset)}
                 className={`flex flex-col items-center justify-center h-8 flex-1 transition-all duration-200
                   ${isSelected 
-                    ? 'bg-amber-600 text-white z-10 rounded shadow-sm' 
+                    ? (isMajor ? 'bg-amber-600' : 'bg-indigo-600') + ' text-white z-10 rounded shadow-sm' 
                     : isBase
                       ? 'bg-slate-700 text-indigo-300 hover:bg-slate-600'
                       : 'text-slate-500 hover:bg-slate-700/50 hover:text-slate-300'

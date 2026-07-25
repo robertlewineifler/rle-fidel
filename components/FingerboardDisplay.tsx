@@ -21,6 +21,8 @@ import FingerboardSidePanel from './FingerboardSidePanel';
 import FingerboardControls from './FingerboardControls';
 import PianoKeyboard from './PianoKeyboard';
 import ScaleNotation from './ScaleNotation';
+import CircleOfFifths from './CircleOfFifths';
+import TransposeBar from './TransposeBar';
 import { Chord } from '../types';
 
 interface FingerboardDisplayProps {
@@ -461,18 +463,40 @@ const FingerboardDisplay: React.FC<FingerboardDisplayProps> = ({
         </div>
 
 
-      <FingerboardControls
-        root={root}
-        isMajor={isMajor}
-        minorVariant={minorVariant}
-        transpose={transpose}
-        onRootChange={onRootChange}
-        onModeChange={onModeChange}
-        onVariantChange={onVariantChange}
-        onTransposeChange={onTransposeChange}
-        getRelativeMinorLabel={getRelativeMinorLabel}
-        formatNoteLabel={formatNoteLabel}
-      />
+      <div className="w-full bg-slate-900/80 rounded-2xl border border-slate-800 p-3 shadow-xl flex flex-col gap-2">
+        <TransposeBar
+          root={root}
+          isMajor={isMajor}
+          transpose={transpose}
+          onTransposeChange={onTransposeChange}
+        />
+
+        <CircleOfFifths
+          root={root}
+          isMajor={isMajor}
+          minorVariant={minorVariant}
+          transpose={transpose}
+          onRootChange={onRootChange}
+          onModeChange={onModeChange}
+          onVariantChange={onVariantChange}
+          onTransposeChange={onTransposeChange}
+        />
+
+        <FingerboardControls
+          root={root}
+          isMajor={isMajor}
+          minorVariant={minorVariant}
+          transpose={transpose}
+          onRootChange={onRootChange}
+          onModeChange={onModeChange}
+          onVariantChange={onVariantChange}
+          onTransposeChange={onTransposeChange}
+          getRelativeMinorLabel={getRelativeMinorLabel}
+          formatNoteLabel={formatNoteLabel}
+          hideTranspose={true}
+          compact={true}
+        />
+      </div>
 
     </div>
   );
