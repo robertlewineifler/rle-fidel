@@ -249,7 +249,7 @@ const ScaleNotation: React.FC<ScaleNotationProps> = ({
         {note.visualStep > 0 && (
         <text x={x} y={labelY1} fontSize={arpeggio ? 14 : 16} fill="#888" textAnchor="middle" fontFamily="sans-serif">{getNoteName(note.absSemitone)}</text>
         )}
-        <text x={x} y={labelY2} fontSize={arpeggio ? 12 : 14} fill="#888" textAnchor="middle" className="font-mono font-bold">{dispDist !== undefined ? dispDist : 'X'}</text>
+        <text x={x} y={labelY2} fontSize={arpeggio ? 14 : 16} fill="#888" textAnchor="middle" className="font-mono font-bold">{dispDist !== undefined ? dispDist : ''}</text>
       </g>
     );
   });

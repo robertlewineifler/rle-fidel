@@ -260,7 +260,7 @@ const ChordManager: React.FC<ChordManagerProps> = ({
     const keyNotes = new Set(keyScale.map(i => (keyRootIndex + i) % 12));
     let totalMatch = 0;
     chs.forEach(chord => {
-      const chordRootIndex = NOTE_TO_INDEX[chord.root];
+    const chordRootIndex = NOTE_TO_INDEX[chord.root];
       const chordIntervals = CHORD_INTERVALS[chord.type] || [];
       let matchCount = 0;
       if (chordRootIndex !== undefined) {
@@ -352,15 +352,15 @@ const ChordManager: React.FC<ChordManagerProps> = ({
   };
 
   const calculateChordMatch = (chord: Chord): number => {
-    if (!effectiveKeyInfo) return 0;
-    const keyRootIndex = NOTE_TO_INDEX[effectiveKeyInfo.key.root.toLowerCase()] ?? NOTE_TO_INDEX[effectiveKeyInfo.key.root];
+    const keyRootIndex = NOTE_TO_INDEX[currentKeyRoot];
     if (keyRootIndex === undefined) return 0;
-    const keyScale = SCALES[effectiveKeyInfo.key.mode];
-    if (!keyScale) return 0;
+    const keyScale = currentKeyIntervals;
+    if (!keyScale || keyScale.length === 0) return 0;
     
     const keyNotes = new Set(keyScale.map(i => (keyRootIndex + i) % 12));
     
-    const chordRootIndex = NOTE_TO_INDEX[chord.root];
+    const transposedRoot = getTransposedChordRoot(chord.root);
+    const chordRootIndex = NOTE_TO_INDEX[transposedRoot];
     if (chordRootIndex === undefined) return 0;
     const chordIntervals = CHORD_INTERVALS[chord.type] || [];
     
@@ -373,6 +373,12 @@ const ChordManager: React.FC<ChordManagerProps> = ({
     
     return chordIntervals.length > 0 ? Math.round((matchCount / chordIntervals.length) * 100) : 0;
   };
+
+  const griffbrettMatchPercent = useMemo(() => {
+    if (chords.length === 0) return 0;
+    const total = chords.reduce((sum, chord) => sum + calculateChordMatch(chord), 0);
+    return Math.round(total / chords.length);
+  }, [chords, currentKeyRoot, currentKeyIntervals, transpose]);
 
   const handleConfirmOriginalKey = () => {
     const newLists = chordLists.map(list =>
@@ -670,7 +676,7 @@ const ChordManager: React.FC<ChordManagerProps> = ({
               {showGriffbrettInfo && (
                 <div>
                   <div className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 ${isDifferentKey ? 'text-red-400' : 'text-slate-500'}`}>Griffbrett</div>
-                  <span className={`text-sm font-bold ${isDifferentKey ? 'text-red-400' : 'text-slate-300'}`}>{currentKeyRoot} {fbMode}</span>
+                  <span className={`text-sm font-bold ${isDifferentKey ? 'text-red-400' : 'text-slate-300'}`}>{currentKeyRoot} {fbMode} <span className="text-xs font-normal opacity-70 ml-0.5">({griffbrettMatchPercent}%)</span></span>
                 </div>
               )}
               </div>
@@ -709,7 +715,7 @@ const ChordManager: React.FC<ChordManagerProps> = ({
               {showGriffbrettInfo && (
                 <div>
                   <div className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 ${isDifferentKey ? 'text-red-400' : 'text-slate-500'}`}>Griffbrett</div>
-                  <span className={`text-sm font-bold ${isDifferentKey ? 'text-red-400' : 'text-slate-300'}`}>{currentKeyRoot} {fbMode}</span>
+                  <span className={`text-sm font-bold ${isDifferentKey ? 'text-red-400' : 'text-slate-300'}`}>{currentKeyRoot} {fbMode} <span className="text-xs font-normal opacity-70 ml-0.5">({griffbrettMatchPercent}%)</span></span>
                 </div>
               )}
               </div>
@@ -819,12 +825,12 @@ const ChordManager: React.FC<ChordManagerProps> = ({
                 className={`flex flex-col bg-slate-800 rounded-xl border-l-[6px] border-r border-t border-b overflow-hidden shadow-md transition-all duration-200 ${isDragged ? 'opacity-30 scale-95' : 'opacity-100 scale-100'} ${gapAbove ? 'mt-3' : ''} ${gapBelow ? 'mb-3' : ''}`}
                 style={{ borderLeftColor: CHORD_COLORS[idx % CHORD_COLORS.length], borderTopColor: '#334155', borderRightColor: '#334155', borderBottomColor: '#334155' }}
               >
-                <div className="flex items-center justify-between px-3 py-2 bg-slate-800/50">
+                <div className="flex items-center justify-between px-3 bg-slate-800/50">
                    <div className="flex items-center gap-2">
                       <div className={`${isDragged ? 'cursor-grabbing' : 'cursor-grab'} text-slate-500 hover:text-slate-300`}>
                         <GripVertical size={16} />
                       </div>
-                       <div className="font-bold text-slate-100 text-lg flex items-baseline gap-1">
+                       <div className="font-bold text-slate-100 text-lg flex items-center gap-1">
                           {romanNumeral && (
                             <span className={`font-mono text-base mr-0.5 ${isDifferentKey ? 'text-red-400' : 'text-amber-400/80'}`}>{romanNumeral}</span>
                           )}
@@ -840,13 +846,12 @@ const ChordManager: React.FC<ChordManagerProps> = ({
                           {transpose === 0 && <span className="text-sm font-medium text-slate-400">{chord.type}</span>}
                        </div>
                    </div>
-                   <div className="flex items-center gap-3">
-                      {bestKeyInfo && (
-                        <div className={`text-xs font-bold px-2 py-0.5 rounded-full ${matchPercent === 100 ? 'bg-emerald-500/20 text-emerald-400' : matchPercent >= 50 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}`}>
-                          {matchPercent}%
-                        </div>
-                      )}
-                      <button onClick={() => removeChord(chord.id)} className="text-slate-500 hover:text-red-400 transition-colors">
+                    <div className="flex items-center gap-3">
+                       <div className={`text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${matchPercent === 100 ? 'bg-emerald-500/20 text-emerald-400' : matchPercent >= 50 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}`}>
+                         {isDifferentKey && <span className="text-red-500 text-[10px] leading-none font-bold">!</span>}
+                         {matchPercent}%
+                       </div>
+                       <button onClick={() => removeChord(chord.id)} className="text-slate-500 hover:text-red-400 transition-colors">
                           <X size={16} />
                       </button>
                    </div>
