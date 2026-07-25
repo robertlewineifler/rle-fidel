@@ -4,6 +4,7 @@ import { Chord, KeyResult, ChordList } from '../types';
 import { ROOT_NOTES, CHORD_INTERVALS, MAJOR_KEY_SIGNATURES, CHORD_DIATONIC_STEPS, NOTE_TO_INDEX, SCALES, PREFERRED_ROOT_NAMES_MAJOR, CHORD_COLORS, PREFERRED_ROOT_NAMES_MINOR, SHARP_CHORD_ROOTS, FLAT_CHORD_ROOTS } from '../constants';
 import ScaleNotation from './ScaleNotation';
 import FingerboardControls from './FingerboardControls';
+import CircleOfFifths from './CircleOfFifths';
 
 interface ChordManagerProps {
   chordLists: ChordList[];
@@ -893,14 +894,14 @@ const ChordManager: React.FC<ChordManagerProps> = ({
 
     {showOriginalKeyPicker && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowOriginalKeyPicker(false)}>
-        <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl p-4 w-[420px] max-w-[95vw]" onClick={e => e.stopPropagation()}>
+        <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl p-4 max-w-[95vw]" style={{ width: 'min(600px, 95vw)' }} onClick={e => e.stopPropagation()}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-bold text-slate-200">Original-Tonart festlegen</h3>
             <button onClick={() => setShowOriginalKeyPicker(false)} className="text-slate-400 hover:text-white transition-colors">
               <X size={16} />
             </button>
           </div>
-          <FingerboardControls
+          <CircleOfFifths
             root={tempOriginalRoot}
             isMajor={tempOriginalIsMajor}
             minorVariant={tempOriginalMinorVariant}
@@ -909,12 +910,8 @@ const ChordManager: React.FC<ChordManagerProps> = ({
             onModeChange={setTempOriginalIsMajor}
             onVariantChange={setTempOriginalMinorVariant}
             onTransposeChange={() => {}}
-            getRelativeMinorLabel={getRelativeMinorLabel}
-            formatNoteLabel={formatNoteLabel}
-            hideTranspose={true}
-            compact={true}
           />
-          <div className="flex justify-end gap-2 mt-4">
+          <div className="flex justify-end gap-2 mt-3">
             <button
               onClick={() => setShowOriginalKeyPicker(false)}
               className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-xs font-bold transition-colors"

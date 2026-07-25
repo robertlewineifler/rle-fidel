@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback } from 'react';
-import { NOTE_TO_INDEX } from '../constants';
+import { NOTE_TO_INDEX, PREFERRED_ROOT_NAMES_MAJOR, PREFERRED_ROOT_NAMES_MINOR } from '../constants';
 
 interface CircleOfFifthsProps {
   root: string;
@@ -250,6 +250,57 @@ const CircleOfFifths: React.FC<CircleOfFifthsProps> = ({
               </g>
             );
           });
+        })()}
+
+        {/* Center text */}
+        {(() => {
+          const disp = isMajor
+            ? PREFERRED_ROOT_NAMES_MAJOR[rootIndex]
+            : PREFERRED_ROOT_NAMES_MINOR[rootIndex];
+          const color = isMajor ? '#f59e0b' : '#6366f1';
+          const variantText = !isMajor ? minorVariant.replace('Moll (', '').replace(')', '') : '';
+          if (transpose === 0) {
+            return (
+              <>
+                <text x={CX} y={variantText ? CY - 9 : CY} textAnchor="middle" dominantBaseline="central"
+                      fill={color} fontSize="15" fontWeight="bold" className="pointer-events-none">
+                  {disp} {isMajor ? 'Dur' : 'Moll'}
+                </text>
+                {variantText && (
+                  <text x={CX} y={CY + 14} textAnchor="middle" dominantBaseline="central"
+                        fill={color} fontSize="12" opacity="0.7" className="pointer-events-none">
+                    ({variantText})
+                  </text>
+                )}
+              </>
+            );
+          }
+          const transposedIdx = (rootIndex + transpose + 72) % 12;
+          const transposedName = isMajor
+            ? PREFERRED_ROOT_NAMES_MAJOR[transposedIdx]
+            : PREFERRED_ROOT_NAMES_MINOR[transposedIdx];
+          return (
+            <>
+              <text x={CX} y={CY - 20} textAnchor="middle" dominantBaseline="central"
+                    fill="#94a3b8" fontSize="14" fontWeight="bold" className="pointer-events-none">
+                {disp} {isMajor ? 'Dur' : 'Moll'}
+              </text>
+              <text x={CX} y={CY - 2} textAnchor="middle" dominantBaseline="central"
+                    fill="#94a3b8" fontSize="16" className="pointer-events-none">
+                {'\u2193'}
+              </text>
+              <text x={CX} y={CY + 16} textAnchor="middle" dominantBaseline="central"
+                    fill={color} fontSize="14" fontWeight="bold" className="pointer-events-none">
+                {transposedName} {isMajor ? 'Dur' : 'Moll'}
+              </text>
+              {variantText && (
+                <text x={CX} y={CY + 32} textAnchor="middle" dominantBaseline="central"
+                      fill={color} fontSize="12" opacity="0.7" className="pointer-events-none">
+                  ({variantText})
+                </text>
+              )}
+            </>
+          );
         })()}
 
       </svg>
