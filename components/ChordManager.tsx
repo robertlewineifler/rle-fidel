@@ -825,7 +825,7 @@ const ChordManager: React.FC<ChordManagerProps> = ({
                       </div>
                        <div className="font-bold text-slate-100 text-lg flex items-baseline gap-1">
                           {romanNumeral && (
-                            <span className={`font-mono text-base mr-0.5 ${showGriffbrettInfo ? 'text-red-400' : 'text-amber-400/80'}`}>{romanNumeral}</span>
+                            <span className={`font-mono text-base mr-0.5 ${isDifferentKey ? 'text-red-400' : 'text-amber-400/80'}`}>{romanNumeral}</span>
                           )}
                           {transpose === 0 ? (
                             <>{formattedRoot}</>

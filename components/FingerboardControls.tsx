@@ -48,7 +48,7 @@ const FingerboardControls: React.FC<FingerboardControlsProps> = ({
           return (
             <div key={idx} className="flex flex-col min-w-0">
               <button
-                onClick={() => { onRootChange(currentMajorRoot); onModeChange(true); }}
+                onClick={() => { onRootChange(currentMajorRoot); onModeChange(true); onTransposeChange(0); }}
                 className={`h-8 w-full rounded-t-sm text-[10px] font-bold transition-all border-x border-t flex items-center justify-center p-0
                   ${isMajorActive
                     ? 'bg-amber-500 text-slate-900 border-amber-400 z-10' 
@@ -58,7 +58,7 @@ const FingerboardControls: React.FC<FingerboardControlsProps> = ({
                 {formatNoteLabel(currentMajorRoot, false)}
               </button>
               <button
-                onClick={() => { onRootChange(relMinorRoot.charAt(0).toUpperCase() + relMinorRoot.slice(1)); onModeChange(false); }}
+                onClick={() => { onRootChange(relMinorRoot.charAt(0).toUpperCase() + relMinorRoot.slice(1)); onModeChange(false); onTransposeChange(0); }}
                 className={`h-8 w-full rounded-b-sm text-[10px] transition-all border-x border-b flex items-center justify-center p-0
                   ${isMinorActive
                     ? 'bg-indigo-500 text-white border-indigo-400 z-10 font-bold' 
@@ -106,8 +106,8 @@ const FingerboardControls: React.FC<FingerboardControlsProps> = ({
             <RotateCcw size={12} />
           </button>
 
-          {[-4, -3, -2, -1, 0, 1, 2, 3, 4].map((offset) => {
-            const isSelected = transpose === offset;
+          {[-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6].map((offset) => {
+            const isSelected = transpose === offset || (Math.abs(transpose) === 6 && Math.abs(offset) === 6);
             const isBase = offset === 0;
             
             const targetIndex = (currentRootIndex + offset + 24) % 12;
